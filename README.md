@@ -1,4 +1,4 @@
-# CivicPulse AI 🏛️💡
+CivicPulse AI
 
 > **AI-Powered Multilingual Citizen Feedback and Public Infrastructure Intelligence Platform**
 
@@ -8,7 +8,7 @@ CivicPulse AI aggregates citizen feedback across languages and modalities (text,
 
 ---
 
-## 🏗️ Project Architecture
+ Project Architecture
 
 ```
 civicpulse/
@@ -51,7 +51,7 @@ civicpulse/
 
 ---
 
-## 🚀 Quickstart Guide
+Quickstart Guide
 
 ### Prerequisites
 - **Python**: 3.10+ (3.12+ recommended)
@@ -97,7 +97,7 @@ Frontend available at: `http://localhost:5173`
 
 ---
 
-## 🔑 Demo Login Credentials
+Demo Login Credentials
 
 | Role | Email | Password |
 |------|-------|----------|
@@ -107,7 +107,7 @@ Frontend available at: `http://localhost:5173`
 
 ---
 
-## 🤖 AI Pipeline Overview
+AI Pipeline Overview
 
 | Stage | Implementation | Description |
 |-------|---------------|-------------|
@@ -122,7 +122,7 @@ Frontend available at: `http://localhost:5173`
 
 ---
 
-## 🧪 Testing
+Testing
 
 ```bash
 cd civicpulse/backend
@@ -144,7 +144,7 @@ Test coverage:
 
 ---
 
-## 📡 API Reference
+API Reference
 
 ### Citizen Endpoints (`/api/v1/citizen/`)
 | Method | Path | Description |
@@ -170,7 +170,7 @@ Test coverage:
 
 ---
 
-## ðŸ“‹ Development Roadmap
+Development Roadmap
 
 - [x] **Phase 1: Project Scaffolding & Setup**
 - [x] **Phase 2: Database Schema, ORM Models & Seed Data Engine**
@@ -182,7 +182,7 @@ Test coverage:
 
 ---
 
-## 🐳 Docker Deployment
+Docker Deployment
 
 Run the entire CivicPulse AI stack with a single command using Docker Compose.
 
