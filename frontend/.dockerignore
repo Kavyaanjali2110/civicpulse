@@ -1,0 +1,26 @@
+# Node modules — always reinstall inside Docker
+node_modules/
+
+# Local build output — rebuilt inside Docker
+dist/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/

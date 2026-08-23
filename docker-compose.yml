@@ -1,0 +1,64 @@
+# ============================================================
+# CivicPulse AI — Docker Compose
+# Orchestrates Backend (FastAPI) + Frontend (Nginx)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # Backend: FastAPI + SQLAlchemy + SQLite + AI Pipeline
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civicpulse-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist the SQLite database and AI model files across container restarts.
+      # Note: The app uses force_seed=True which re-seeds data on every startup.
+      # This volume ensures the data/ directory has a stable, writable location.
+      - civicpulse_data:/app/data
+    environment:
+      # Use absolute path inside container (4 slashes = absolute for SQLite URL)
+      - DATABASE_URL=sqlite:////app/data/civicpulse.db
+      # Expand CORS origins to include the Dockerized frontend on port 80
+      - BACKEND_CORS_ORIGINS=http://localhost,http://localhost:80,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
+      - ENVIRONMENT=production
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Frontend: React/Vite built app served via Nginx
+  # ----------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Bake the backend URL into the JS bundle at build time.
+        # The browser fetches JS from port 80 (this container),
+        # then makes API calls directly to port 8000 (backend container via host).
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    container_name: civicpulse-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ----------------------------------------------------------
+# Named Volumes
+# ----------------------------------------------------------
+volumes:
+  civicpulse_data:
+    driver: local
+    name: civicpulse_data

@@ -1,0 +1,44 @@
+# Python virtual environment — never copy into Docker
+venv/
+.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local database (will be re-created by Docker volume)
+data/civicpulse.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files (secrets must not leak into image)
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+
+# Logs
+*.log
+logs/

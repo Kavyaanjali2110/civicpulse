@@ -1,0 +1,24 @@
+{
+  "app_name": "CivicPulse AI",
+  "tagline": "AI-Powered Multilingual Citizen Feedback & Public Infrastructure Intelligence",
+  "nav": {
+    "citizen_portal": "Citizen Portal",
+    "gov_dashboard": "Government Dashboard",
+    "status": "System Status"
+  },
+  "portal": {
+    "title": "Report a Civic Issue",
+    "subtitle": "Voice or text in any language. Your feedback shapes better public infrastructure.",
+    "submit_btn": "Submit Grievance",
+    "track_btn": "Track Status"
+  },
+  "dashboard": {
+    "title": "Municipal Infrastructure Intelligence",
+    "subtitle": "Real-time AI aggregation, DBSCAN hotspot detection & priority dispatch.",
+    "overview": "Overview",
+    "heatmap": "Geospatial Heatmap",
+    "hotspots": "Hotspot Detection",
+    "rankings": "Priority Rankings",
+    "recommendations": "AI Recommendations"
+  }
+}
