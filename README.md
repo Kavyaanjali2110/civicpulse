@@ -1,14 +1,12 @@
-# CivicPulse AI 🏛️💡
+CivicPulse AI 
 
-> **AI-Powered Omnichannel Civic Grievance Intake, Predictive Municipal Infrastructure Intelligence & Automated Field Operations Platform**
+AI-Powered Omnichannel Civic Grievance Intake, Predictive Municipal Infrastructure Intelligence & Automated Field Operations Platform
 
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-68%2F68%20passed-brightgreen)](./backend/tests/) [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org) [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)](https://fastapi.tiangolo.com) [![React](https://img.shields.io/badge/react-18-61dafb)](https://react.dev) [![Vite](https://img.shields.io/badge/vite-5.4-646CFF)](https://vitejs.dev) [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
----
+Executive Summary
 
-## 🌟 Executive Summary
-
-**CivicPulse AI** transforms civic governance from a reactive complaint ticketing system into a predictive municipal infrastructure intelligence and rapid field-operations platform.
+CivicPulse AI transforms civic governance from a reactive complaint ticketing system into a predictive municipal infrastructure intelligence and rapid field-operations platform.
 
 ```
        OMNICHANNEL INTAKE                AI REASONING CORE                    PREDICTIVE INTELLIGENCE
@@ -33,60 +31,38 @@
 
 ---
 
-## 🏛️ Platform Architecture: 3 Unified Tracks
+Platform Architecture: 3 Unified Tracks
 
-### Track A: Reactive Grievance Operations & Closed-Loop Field Dispatch
-- **Multilingual Intake**: Real-time language detection across 30+ languages, automated English normalization, and speech-to-text voice grievance transcription.
-- **AI Classification**: Scikit-Learn TF-IDF vectorizer + Logistic Regression model calibrated for municipal categories (*Water Supply & Drainage*, *Roads & Infrastructure*, *Solid Waste Management*, *Electricity & Street Lighting*, *Public Health & Sanitation*, *Traffic & Civil Safety*).
-- **Severity Engine**: Multi-factor 0–1.0 score analyzing physical hazard keywords, vulnerable population keywords, school/hospital zones, and category base weights.
-- **Spatial Deduplication & Hotspots**: Geographic proximity clustering (500m radius) with cosine text similarity to detect duplicate complaints, and DBSCAN clustering to identify emergent spatial hotspots.
-- **Infrastructure Priority Score (IPS)**: Formula balancing severity, proximity to high-vulnerability civic assets, repeat complaint history, and spatial cluster membership.
-- **Closed-Loop Field Workflow**: Department routing, field crew assignment, mobile status transitions (`ASSIGNED` → `ACCEPTED` → `IN_PROGRESS` → `RESOLVED`), mandatory before/after photo proof, SLA timer tracking, and citizen 5-star feedback rating.
+Track A: Reactive Grievance Operations & Closed-Loop Field Dispatch
+- Multilingual Intake: Real-time language detection across 30+ languages, automated English normalization, and speech-to-text voice grievance transcription.
+- AI Classification: Scikit-Learn TF-IDF vectorizer + Logistic Regression model calibrated for municipal categories (Water Supply & Drainage, Roads & Infrastructure, Solid Waste Management, Electricity & Street Lighting, Public Health & Sanitation, Traffic & Civil Safety).
+- Severity Engine: Multi-factor 0–1.0 score analyzing physical hazard keywords, vulnerable population keywords, school/hospital zones, and category base weights.
+- Spatial Deduplication & Hotspots: Geographic proximity clustering (500m radius) with cosine text similarity to detect duplicate complaints, and DBSCAN clustering to identify emergent spatial hotspots.
+- Infrastructure Priority Score (IPS): Formula balancing severity, proximity to high-vulnerability civic assets, repeat complaint history, and spatial cluster membership.
+- Closed-Loop Field Workflow: Department routing, field crew assignment, mobile status transitions (`ASSIGNED` → `ACCEPTED` → `IN_PROGRESS` → `RESOLVED`), mandatory before/after photo proof, SLA timer tracking, and citizen 5-star feedback rating.
 
-### Track B: Predictive Infrastructure Maintenance & Failure Forecasting
-- **Asset Health Index (AHI)**: Continuous 0–100 mathematical health metric evaluating:
+ Track B: Predictive Infrastructure Maintenance & Failure Forecasting
+- Asset Health Index (AHI): Continuous 0–100 mathematical health metric evaluating:
   - Complaint frequency & surge velocity over 14-day and 60-day windows.
   - Active DBSCAN spatial hotspot overlap & severity penalty.
   - Asset chronological age vs expected municipal design lifespan.
   - Days elapsed since previous preventive maintenance inspection.
-- **Calibrated Failure Forecasting**: Predictive logistic risk models projecting failure probability over **7-Day**, **14-Day**, and **30-Day** forward time horizons.
-- **Ward Risk Index (WRI)**: Macro-level civic risk scoring prioritizing municipal budget allocation across geographic zones.
-- **Predictive Explainable AI (XAI)**: Diagnostic narratives outlining the top 3 contributing risk factors and recommended engineering interventions.
-- **Preventive Maintenance Work Orders**: Direct generation of preventive work orders assigned to specialized municipal crews to service assets *before* catastrophic structural failure occurs.
+- Calibrated Failure Forecasting: Predictive logistic risk models projecting failure probability over 7-Day, 14-Day, and 30-Day forward time horizons.
+- Ward Risk Index (WRI): Macro-level civic risk scoring prioritizing municipal budget allocation across geographic zones.
+- Predictive Explainable AI (XAI): Diagnostic narratives outlining the top 3 contributing risk factors and recommended engineering interventions.
+- Preventive Maintenance Work Orders: Direct generation of preventive work orders assigned to specialized municipal crews to service assets before catastrophic structural failure occurs.
 
-### Track C: Omnichannel Ingestion & Two-Way Citizen Notifications
-- **Simulated WhatsApp Webhook**: Structured payload ingestion (`from`, `sender_name`, `text`, `location`) generating instant acknowledgment messages and tracking IDs.
-- **Simulated SMS Gateway**: Lightweight mobile grievance ingestion with profile-based fallback ward resolution.
+Track C: Omnichannel Ingestion & Two-Way Citizen Notifications
+- Simulated WhatsApp Webhook: Structured payload ingestion (`from`, `sender_name`, `text`, `location`) generating instant acknowledgment messages and tracking IDs.
+- Simulated SMS Gateway: Lightweight mobile grievance ingestion with profile-based fallback ward resolution.
 - **Partner REST Webhooks**: Third-party civic partner integration with idempotency protection against duplicate external message IDs.
 - **Interactive Omnichannel Simulator**: In-browser simulator modal allowing municipal officers to simulate live WhatsApp and SMS citizen grievances on the fly.
 - **Two-Way Notification Lifecycle**: Automated citizen notifications at every workflow milestone (`COMPLAINT_RECEIVED`, `AI_ANALYZED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`) with mock SMS/WhatsApp delivery records.
 
 ---
 
-## 📊 Implementation Status Matrix
 
-| Module / Capability | Status | Description |
-|:---|:---:|:---|
-| **Multilingual NLP & Translation** | `IMPLEMENTED` | Real-time language detection (30+ languages) & English translation |
-| **Grievance AI Classifier & Severity** | `IMPLEMENTED` | Production Scikit-Learn TF-IDF + Logistic Regression model & multi-factor hazard scoring |
-| **DBSCAN Clustering & IPS Scoring** | `IMPLEMENTED` | Spatial hotspot clustering (500m radius) & Infrastructure Priority Scoring (IPS 0–100) |
-| **Explainable AI (XAI)** | `IMPLEMENTED` | Human-readable engineering rationale explaining AI triage and risk factors |
-| **Closed-Loop Field Operations** | `IMPLEMENTED` | Department routing, crew dispatch, mobile transitions, SLA tracking, before/after photos |
-| **Citizen Resolution & Feedback** | `IMPLEMENTED` | Public tracking portal, photographic verification, 5-star rating & review persistence |
-| **Asset Health Index (AHI 0–100)** | `IMPLEMENTED` | Continuous mathematical health scoring evaluating age, maintenance, and complaint velocity |
-| **Predictive Failure Forecasting** | `IMPLEMENTED` | Calibrated logistic risk models for 7-Day, 14-Day, and 30-Day failure probabilities |
-| **Ward Risk Index (WRI)** | `IMPLEMENTED` | Macro-level civic risk scoring prioritizing municipal infrastructure allocation |
-| **Preventive Maintenance Work Orders**| `IMPLEMENTED` | Direct generation and crew execution of preventive work orders |
-| **Interactive Omnichannel Simulator** | `IMPLEMENTED` | In-app modal for simulating inbound WhatsApp and SMS citizen grievances |
-| **Two-Way Notification Lifecycle** | `IMPLEMENTED` | Database-backed audit logging of alerts at every ticket milestone |
-| **Interactive Leaflet GIS Map** | `IMPLEMENTED` | Multi-layer map (Heatmap, DBSCAN Hotspots, Severity Pins, Infrastructure, Predictive Risk) |
-| **WhatsApp & SMS Gateway Transport** | `SIMULATED` | Schema-authentic mock endpoints and in-browser simulator; no external Twilio/Meta billing required |
-| **Live External Telephony Gateways** | `FUTURE INTEGRATION` | Production Meta WhatsApp Cloud API and Twilio SMS credentials plug-in |
-| **Municipal IoT Sensor Streaming** | `FUTURE INTEGRATION` | Real-time SCADA telemetry ingestion for water pressure and electrical grid meters |
-
----
-
-## 🎬 Flagship 6-Step Demonstration Scenario
+ Flagship 6-Step Demonstration Scenario
 
 CivicPulse includes a deterministic, end-to-end demonstration scenario demonstrating the full closed-loop lifecycle:
 
@@ -117,44 +93,41 @@ Step 6: Field Crew executes preventive work order
         ↳ Complete prevention loop achieved!
 ```
 
-### Run Flagship Verification CLI:
+ Run Flagship Verification CLI:
 ```bash
 cd civicpulse/backend
 .\venv\Scripts\python.exe tests/verify_flagship_demo.py
 ```
-*Output: `FLAGSHIP DEMONSTRATION VERIFIED END-TO-END (ALL 6 STEPS PASSED!)`*
 
 ---
-
-## 🔄 Demo Reset & Seeding
+ Demo Reset & Seeding
 
 Restore the database to the pristine demo baseline (22 complaints across all severities, 10 infrastructure assets, 4 spatial hotspots, 8 field crews, 55 notification records, 1 active preventive work order):
-
-### Option A: Via Backend CLI
+ Option A: Via Backend CLI
 ```bash
 cd civicpulse/backend
 python -m app.db.reset_demo
 ```
 
-### Option B: Via REST API
+ Option B: Via REST API
 ```bash
 curl -X POST http://localhost:8000/api/v1/system/demo-reset
 ```
 
-### Option C: Via Web UI
-Click the **"Reset Demo"** button directly in the top navigation bar of the application.
+Option C: Via Web UI
+Click the "Reset Demo" button directly in the top navigation bar of the application.
 
 ---
 
-## 🚀 Quickstart Guide
+ Quickstart Guide
 
-### Prerequisites
-- **Python**: 3.10+ (3.12+ recommended)
-- **Node.js**: 18+ (npm 9+)
+ Prerequisites
+- Python: 3.10+ (3.12+ recommended)
+- Node.js: 18+ (npm 9+)
 
 ---
 
-### 1. Backend Setup
+ 1. Backend Setup
 
 ```bash
 cd civicpulse/backend
@@ -181,7 +154,7 @@ python main.py
 
 ---
 
-### 2. Frontend Setup
+ 2. Frontend Setup
 
 ```bash
 cd civicpulse/frontend
@@ -198,17 +171,17 @@ npm run dev
 
 ---
 
-## 🔑 Demo Login Credentials
+ Demo Login Credentials
 
 | Role | Email | Password | Primary Capabilities |
 |:-----|:------|:---------|:---------------------|
-| **Citizen** | `citizen@civicpulse.ai` | `citizen123` | Submit grievances (multilingual text/voice/GPS), track status, review photo evidence, submit 5-star ratings. |
-| **Government Officer** | `officer@civicpulse.ai` | `gov2026` | Real-time map, priority ranking queue, predictive asset risk, ward index, omnichannel intake view & simulator, field crew dispatch. |
-| **Field Crew Leader** | `crew@civicpulse.ai` | `crew2026` | Mobile task view, status transitions (`ACCEPTED`, `IN_PROGRESS`), photographic evidence upload, preventive maintenance execution. |
+|Citizen| `citizen@civicpulse.ai` | `citizen123` | Submit grievances (multilingual text/voice/GPS), track status, review photo evidence, submit 5-star ratings. |
+|Government Officer| `officer@civicpulse.ai` | `gov2026` | Real-time map, priority ranking queue, predictive asset risk, ward index, omnichannel intake view & simulator, field crew dispatch. |
+|Field Crew Leader| `crew@civicpulse.ai` | `crew2026` | Mobile task view, status transitions (`ACCEPTED`, `IN_PROGRESS`), photographic evidence upload, preventive maintenance execution. |
 
 ---
 
-## 🧪 Automated Testing Suite
+ Automated Testing Suite
 
 The platform includes **68 comprehensive automated tests** across all 3 tracks with 100% pass rate:
 
@@ -235,15 +208,15 @@ pytest tests/ -v
 
 ---
 
-## 📡 REST API Reference
+ REST API Reference
 
-### System Management (`/api/v1/system/`)
+System Management (`/api/v1/system/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `GET` | `/system/info` | Platform runtime status, track indicators, and entity counters |
 | `POST` | `/system/demo-reset` | Resets and re-seeds database to clean demonstration baseline |
 
-### Citizen Services (`/api/v1/citizen/`)
+Citizen Services (`/api/v1/citizen/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `GET` | `/citizen/categories` | List active municipal grievance categories |
@@ -266,7 +239,7 @@ pytest tests/ -v
 | `GET` | `/gov/trends` | 14-day category velocity and surge detection |
 | `GET` | `/gov/ai-recommendations` | Prescriptive resource allocation recommendations |
 
-### Field Crew Dispatch (`/api/v1/gov/`)
+ Field Crew Dispatch (`/api/v1/gov/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `GET` | `/gov/departments` | Municipal departments with crew counts |
@@ -277,7 +250,7 @@ pytest tests/ -v
 | `POST` | `/gov/complaints/{id}/resolution-evidence` | Upload photographic before/after proof & description |
 | `POST` | `/gov/assignments/{id}/complete` | Complete assignment and transition ticket to `RESOLVED` |
 
-### Predictive Infrastructure Maintenance (`/api/v1/analytics/`)
+Predictive Infrastructure Maintenance (`/api/v1/analytics/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `GET` | `/analytics/assets/health` | Asset Health Index (AHI 0–100) across all infrastructure assets |
@@ -286,7 +259,7 @@ pytest tests/ -v
 | `GET` | `/analytics/wards/risk` | Ward Risk Index (WRI) and asset vulnerability aggregation |
 | `GET` | `/analytics/predictive/recommendations` | Prescriptive maintenance intervention recommendations |
 
-### Preventive Maintenance Dispatch (`/api/v1/dispatch/`)
+ Preventive Maintenance Dispatch (`/api/v1/dispatch/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `POST` | `/dispatch/preventive-maintenance` | Create preventive maintenance work order for asset |
@@ -294,15 +267,14 @@ pytest tests/ -v
 | `GET` | `/dispatch/preventive-maintenance/{id}` | Preventive work order detail & history |
 | `PUT` | `/dispatch/preventive-maintenance/{id}/status` | Transition status (`ACCEPTED`, `IN_PROGRESS`, `COMPLETED`) |
 
-### Omnichannel Ingestion (`/api/v1/webhooks/`)
+ Omnichannel Ingestion (`/api/v1/webhooks/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `POST` | `/webhooks/whatsapp` | Ingest WhatsApp webhook payload |
 | `POST` | `/webhooks/sms` | Ingest SMS gateway payload |
 | `POST` | `/webhooks/generic` | Ingest third-party municipal partner webhook payload |
 | `GET` | `/webhooks/stats` | Channel breakdown analytics & volume metrics |
-
-### Citizen Notifications (`/api/v1/notifications/`)
+Citizen Notifications (`/api/v1/notifications/`)
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
 | `GET` | `/notifications/complaint/{id}` | Notification audit trail for specific grievance |
@@ -310,7 +282,7 @@ pytest tests/ -v
 
 ---
 
-## 🐳 Docker Deployment
+ Docker Deployment
 
 The application includes production-ready Docker and Docker Compose configuration:
 
@@ -323,11 +295,11 @@ docker compose up --build
 - Backend: `http://localhost:8000` (Uvicorn ASGI server)
 - Database: Persistent SQLite volume `civicpulse_data`
 
-*(Note: In environments where Docker is not installed locally, use the Quickstart Guide for native execution.)*
+
 
 ---
 
-## 📐 Engineering Implementation Notes
+Engineering Implementation Notes
 
 1. **AI Models vs Calibration**: The text classification engine utilizes a production-grade Scikit-Learn TF-IDF vectorizer + Logistic Regression model trained on municipal grievance corpora. The predictive maintenance models utilize calibrated multi-factor mathematical models integrating spatial proximity, complaint velocity, asset age, and maintenance history.
 2. **Mock Webhooks & Notification Dispatch**: WhatsApp, SMS, and partner webhooks use production-schema mock endpoints that execute the authentic end-to-end AI pipeline and store real database audit records without requiring paid external Twilio or Meta WhatsApp Business API credentials.
@@ -335,5 +307,4 @@ docker compose up --build
 
 ---
 
-## 📄 License
-CivicPulse AI is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+
