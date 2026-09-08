@@ -10,6 +10,12 @@ class Complaint(Base):
     id = Column(Integer, primary_key=True, index=True)
     tracking_id = Column(String(20), unique=True, index=True, nullable=False)
     
+    # Omnichannel metadata
+    source_channel = Column(String(20), default="WEB", nullable=False, index=True)  # WEB, WHATSAPP, SMS, WEBHOOK
+    external_message_id = Column(String(100), unique=True, nullable=True, index=True)
+    external_sender_id = Column(String(100), nullable=True, index=True)
+    ingestion_timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
     citizen_name = Column(String(100), nullable=True)
     citizen_contact = Column(String(50), nullable=True)
     
@@ -20,8 +26,8 @@ class Complaint(Base):
     audio_url = Column(String(255), nullable=True)
     image_url = Column(String(255), nullable=True)
     
-    latitude = Column(Float, nullable=False, index=True)
-    longitude = Column(Float, nullable=False, index=True)
+    latitude = Column(Float, nullable=True, index=True)
+    longitude = Column(Float, nullable=True, index=True)
     address = Column(String(255), nullable=True)
     ward_id = Column(Integer, nullable=True, index=True)
     ward_name = Column(String(80), nullable=True)
@@ -51,6 +57,7 @@ class Complaint(Base):
     crew_assignments = relationship("CrewAssignment", back_populates="complaint", cascade="all, delete-orphan", order_by="CrewAssignment.assigned_at.desc()")
     resolution_evidences = relationship("ResolutionEvidence", back_populates="complaint", cascade="all, delete-orphan", order_by="ResolutionEvidence.uploaded_at.desc()")
     citizen_feedback = relationship("CitizenFeedback", back_populates="complaint", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="complaint", cascade="all, delete-orphan", order_by="Notification.created_at.asc()")
 
     def __repr__(self):
-        return f"<Complaint(tracking_id='{self.tracking_id}', status='{self.status}', priority={self.priority_score})>"
+        return f"<Complaint(tracking_id='{self.tracking_id}', channel='{self.source_channel}', status='{self.status}', priority={self.priority_score})>"

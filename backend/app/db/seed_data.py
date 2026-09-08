@@ -10,6 +10,8 @@ from app.models.field_crew import FieldCrew
 from app.models.crew_assignment import CrewAssignment
 from app.models.resolution_evidence import ResolutionEvidence
 from app.models.citizen_feedback import CitizenFeedback
+from app.models.preventive_maintenance import PreventiveMaintenanceOrder
+from app.models.notification import Notification
 from app.utils.ward_resolver import get_ward
 
 # Metropolitan Center Base Coordinates (Metro Civic Center)
@@ -75,7 +77,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON + 0.0034,
         "impact_radius_meters": 600.0,
         "vulnerability_weight": 2.8,
-        "description": "Primary Level-1 trauma care hospital with 24/7 ambulance emergency route."
+        "description": "Primary Level-1 trauma care hospital with 24/7 ambulance emergency route.",
+        "department_name": "Public Safety & Traffic Control",
+        "installation_year": 2012,
+        "last_maintenance_days_ago": 110,
+        "last_inspection_days_ago": 25,
+        "expected_lifespan_years": 40
     },
     {
         "name": "St. Jude Children's Medical Center",
@@ -84,7 +91,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON + 0.0062,
         "impact_radius_meters": 500.0,
         "vulnerability_weight": 2.5,
-        "description": "Pediatric specialized hospital and maternity clinic."
+        "description": "Pediatric specialized hospital and maternity clinic.",
+        "department_name": "Public Safety & Traffic Control",
+        "installation_year": 2016,
+        "last_maintenance_days_ago": 90,
+        "last_inspection_days_ago": 30,
+        "expected_lifespan_years": 35
     },
     {
         "name": "Central Government High School",
@@ -93,7 +105,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON - 0.0041,
         "impact_radius_meters": 400.0,
         "vulnerability_weight": 2.2,
-        "description": "Public school serving 2,500 daily students with heavy morning pedestrian traffic."
+        "description": "Public school serving 2,500 daily students with heavy morning pedestrian traffic.",
+        "department_name": "Public Safety & Traffic Control",
+        "installation_year": 2014,
+        "last_maintenance_days_ago": 75,
+        "last_inspection_days_ago": 20,
+        "expected_lifespan_years": 30
     },
     {
         "name": "Greenwood Public School",
@@ -102,7 +119,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON - 0.0055,
         "impact_radius_meters": 350.0,
         "vulnerability_weight": 2.0,
-        "description": "Elementary and middle school zone."
+        "description": "Elementary and middle school zone.",
+        "department_name": "Public Safety & Traffic Control",
+        "installation_year": 2019,
+        "last_maintenance_days_ago": 45,
+        "last_inspection_days_ago": 15,
+        "expected_lifespan_years": 30
     },
     {
         "name": "Central Water Distribution Reservoir",
@@ -111,7 +133,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON + 0.0018,
         "impact_radius_meters": 750.0,
         "vulnerability_weight": 2.6,
-        "description": "Municipal drinking water storage hub supplying North and Central sectors."
+        "description": "Municipal drinking water storage hub supplying North and Central sectors.",
+        "department_name": "Water Supply & Drainage",
+        "installation_year": 2010,
+        "last_maintenance_days_ago": 160,
+        "last_inspection_days_ago": 40,
+        "expected_lifespan_years": 25
     },
     {
         "name": "Metro Transit Interchange Station",
@@ -120,7 +147,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON + 0.0008,
         "impact_radius_meters": 500.0,
         "vulnerability_weight": 2.4,
-        "description": "Central metro rail and regional bus rapid transit terminal (85k daily commuters)."
+        "description": "Central metro rail and regional bus rapid transit terminal (85k daily commuters).",
+        "department_name": "Roads & Infrastructure",
+        "installation_year": 2018,
+        "last_maintenance_days_ago": 60,
+        "last_inspection_days_ago": 20,
+        "expected_lifespan_years": 30
     },
     {
         "name": "North Grid Power Substation",
@@ -129,7 +161,12 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON - 0.0072,
         "impact_radius_meters": 600.0,
         "vulnerability_weight": 2.7,
-        "description": "High voltage transformer substation feeding commercial and residential zones."
+        "description": "High voltage transformer substation feeding commercial and residential zones.",
+        "department_name": "Electrical & Power Grid",
+        "installation_year": 2011,
+        "last_maintenance_days_ago": 240,
+        "last_inspection_days_ago": 70,
+        "expected_lifespan_years": 25
     },
     {
         "name": "Railway Overpass Flyover Bridge",
@@ -138,7 +175,40 @@ INFRASTRUCTURE_ASSETS_SEED = [
         "longitude": BASE_LON + 0.0011,
         "impact_radius_meters": 450.0,
         "vulnerability_weight": 2.3,
-        "description": "Arterial four-lane vehicular overpass over central railway lines."
+        "description": "Arterial four-lane vehicular overpass over central railway lines.",
+        "department_name": "Roads & Infrastructure",
+        "installation_year": 2009,
+        "last_maintenance_days_ago": 210,
+        "last_inspection_days_ago": 60,
+        "expected_lifespan_years": 40
+    },
+    {
+        "name": "Water Treatment Station WT-04",
+        "asset_type": "WATER_FACILITY",
+        "latitude": BASE_LAT + 0.0055,
+        "longitude": BASE_LON + 0.0031,
+        "impact_radius_meters": 650.0,
+        "vulnerability_weight": 2.9,
+        "description": "High-capacity municipal secondary water treatment filtration and pumping terminal supplying Ward 4.",
+        "department_name": "Water Supply & Drainage",
+        "installation_year": 2013,
+        "last_maintenance_days_ago": 290,
+        "last_inspection_days_ago": 95,
+        "expected_lifespan_years": 20
+    },
+    {
+        "name": "South Sector Transformer T-17",
+        "asset_type": "POWER_STATION",
+        "latitude": BASE_LAT + 0.0031,
+        "longitude": BASE_LON - 0.0043,
+        "impact_radius_meters": 450.0,
+        "vulnerability_weight": 2.8,
+        "description": "33kV step-down distribution transformer serving commercial streetlights and schools in Ward 2.",
+        "department_name": "Electrical & Power Grid",
+        "installation_year": 2012,
+        "last_maintenance_days_ago": 265,
+        "last_inspection_days_ago": 80,
+        "expected_lifespan_years": 20
     }
 ]
 
@@ -203,6 +273,8 @@ COMPLAINTS_SEED = [
         "tracking_id": "CP-2026-W101",
         "citizen_name": "Dr. Rajesh Sharma",
         "citizen_contact": "+91-98201-11223",
+        "source_channel": "WHATSAPP",
+        "external_message_id": "WA-9101",
         "raw_text": "City Hospital road pe bada water pipe phat gaya hai, pani hospital ke gate ke andar ghus raha hai aur ambulance aane me problem ho rahi hai.",
         "detected_language": "hi",
         "translated_text": "A major water pipe has burst on City Hospital road, water is entering the hospital gate and causing severe obstruction for incoming ambulances.",
@@ -222,6 +294,8 @@ COMPLAINTS_SEED = [
         "tracking_id": "CP-2026-W102",
         "citizen_name": "Sunita Patil",
         "citizen_contact": "+91-98700-44551",
+        "source_channel": "WHATSAPP",
+        "external_message_id": "WA-9102",
         "raw_text": "हॉस्पिटल समोरील मुख्य रस्त्यावर पाण्याचा पाईप फुटून लाखो लिटर पाणी वाया जात आहे आणि रस्ता खचला आहे.",
         "detected_language": "mr",
         "translated_text": "Water pipe burst on the main road in front of the hospital, wasting thousands of liters of water and causing road subsidence.",
@@ -241,6 +315,8 @@ COMPLAINTS_SEED = [
         "tracking_id": "CP-2026-W103",
         "citizen_name": "Arun Verma",
         "citizen_contact": "+91-91234-56789",
+        "source_channel": "SMS",
+        "external_message_id": "SMS-9103",
         "raw_text": "Drinking water supply has completely stopped in our block due to the main road pipeline burst near Memorial Hospital.",
         "detected_language": "en",
         "translated_text": "Drinking water supply has completely stopped in our block due to the main road pipeline burst near Memorial Hospital.",
@@ -260,6 +336,8 @@ COMPLAINTS_SEED = [
         "tracking_id": "CP-2026-W104",
         "citizen_name": "Carlos Gomez",
         "citizen_contact": "+1-555-0192",
+        "source_channel": "SMS",
+        "external_message_id": "SMS-9104",
         "raw_text": "Fuga masiva de agua en la avenida principal inundando la calle frente al hospital.",
         "detected_language": "es",
         "translated_text": "Massive water leak on the main avenue flooding the street in front of the hospital.",
@@ -279,6 +357,8 @@ COMPLAINTS_SEED = [
         "tracking_id": "CP-2026-W105",
         "citizen_name": "Priya Nair",
         "citizen_contact": "+91-98450-99881",
+        "source_channel": "WEBHOOK",
+        "external_message_id": "EXT-9105",
         "raw_text": "Water gushing with high pressure near hospital entrance, creating huge crater in the road.",
         "detected_language": "en",
         "translated_text": "Water gushing with high pressure near hospital entrance, creating huge crater in the road.",
@@ -748,6 +828,21 @@ def seed_database(db: Session, force: bool = False):
     if existing_cat_count > 0 and not force:
         return {"status": "already_seeded", "categories": existing_cat_count}
 
+    if force:
+        db.query(Notification).delete()
+        db.query(PreventiveMaintenanceOrder).delete()
+        db.query(CitizenFeedback).delete()
+        db.query(ResolutionEvidence).delete()
+        db.query(CrewAssignment).delete()
+        db.query(AuditLog).delete()
+        db.query(Complaint).delete()
+        db.query(HotspotCluster).delete()
+        db.query(InfrastructureAsset).delete()
+        db.query(FieldCrew).delete()
+        db.query(Department).delete()
+        db.query(Category).delete()
+        db.commit()
+
     now = datetime.now(timezone.utc)
 
     # 1. Seed Departments
@@ -800,6 +895,12 @@ def seed_database(db: Session, force: bool = False):
     # 4. Seed Critical Infrastructure Assets
     for asset_data in INFRASTRUCTURE_ASSETS_SEED:
         w_id, w_name = get_ward(asset_data["latitude"], asset_data["longitude"])
+        dept_name = asset_data.get("department_name")
+        dept_id = dept_map.get(dept_name).id if dept_name and dept_name in dept_map else None
+
+        maint_days = asset_data.get("last_maintenance_days_ago", 90)
+        insp_days = asset_data.get("last_inspection_days_ago", 30)
+
         asset = InfrastructureAsset(
             name=asset_data["name"],
             asset_type=asset_data["asset_type"],
@@ -810,6 +911,11 @@ def seed_database(db: Session, force: bool = False):
             impact_radius_meters=asset_data["impact_radius_meters"],
             vulnerability_weight=asset_data["vulnerability_weight"],
             description=asset_data["description"],
+            installation_year=asset_data.get("installation_year", 2015),
+            last_maintenance_date=now - timedelta(days=maint_days),
+            last_inspection_date=now - timedelta(days=insp_days),
+            expected_lifespan_years=asset_data.get("expected_lifespan_years", 25),
+            department_id=dept_id,
             created_at=now - timedelta(days=60)
         )
         db.add(asset)
@@ -856,8 +962,13 @@ def seed_database(db: Session, force: bool = False):
         )
 
         w_id, w_name = get_ward(c_data["latitude"], c_data["longitude"])
+        channel = c_data.get("source_channel", "WEB")
         complaint = Complaint(
             tracking_id=c_data["tracking_id"],
+            source_channel=channel,
+            external_message_id=c_data.get("external_message_id"),
+            external_sender_id=c_data["citizen_contact"],
+            ingestion_timestamp=created_time,
             citizen_name=c_data["citizen_name"],
             citizen_contact=c_data["citizen_contact"],
             raw_text=c_data["raw_text"],
@@ -889,11 +1000,37 @@ def seed_database(db: Session, force: bool = False):
             complaint_id=complaint.id,
             previous_status=None,
             new_status="RECEIVED",
-            changed_by="Citizen Submission",
-            notes="Complaint registered via multilingual citizen portal.",
+            changed_by=f"Citizen Submission ({channel})",
+            notes=f"Complaint registered via {channel} channel in {c_data['detected_language'].upper()}.",
             created_at=created_time
         )
         db.add(audit_initial)
+
+        # Omnichannel Status Notifications: Received & Analyzed
+        cat_name = cat.name if cat else "Civic Issue"
+        n1 = Notification(
+            complaint_id=complaint.id,
+            citizen_identifier=complaint.citizen_contact or "Citizen",
+            channel=channel,
+            event_type="COMPLAINT_RECEIVED",
+            message=f"Your CivicPulse complaint {complaint.tracking_id} has been received via {channel}. Category: {cat_name}. Priority: {complaint.severity_level}.",
+            status="SENT",
+            created_at=created_time,
+            sent_at=created_time,
+        )
+        db.add(n1)
+
+        n2 = Notification(
+            complaint_id=complaint.id,
+            citizen_identifier=complaint.citizen_contact or "Citizen",
+            channel=channel,
+            event_type="AI_ANALYZED",
+            message=f"AI analysis completed for {complaint.tracking_id}. Priority Score: {complaint.priority_score}/100. Zone: {w_name}.",
+            status="SENT",
+            created_at=created_time + timedelta(seconds=20),
+            sent_at=created_time + timedelta(seconds=20),
+        )
+        db.add(n2)
 
         # Audit trail for progressed or resolved
         if complaint.status in ["INVESTIGATING", "IN_PROGRESS", "RESOLVED"]:
@@ -906,6 +1043,18 @@ def seed_database(db: Session, force: bool = False):
                 created_at=created_time + timedelta(hours=1)
             )
             db.add(audit_progress)
+
+            n_status = Notification(
+                complaint_id=complaint.id,
+                citizen_identifier=complaint.citizen_contact or "Citizen",
+                channel=channel,
+                event_type="RESOLVED" if complaint.status == "RESOLVED" else "ASSIGNED",
+                message=f"Status update for {complaint.tracking_id}: {complaint.status}. Municipal dispatch active.",
+                status="SENT",
+                created_at=created_time + timedelta(hours=1),
+                sent_at=created_time + timedelta(hours=1),
+            )
+            db.add(n_status)
 
     # 7. Seed Sample Crew Assignments, Resolution Evidence, and Feedback
     # (a) Active In-Progress Assignment (Water Pipe Burst)
@@ -1034,6 +1183,26 @@ def seed_database(db: Session, force: bool = False):
             created_at=now - timedelta(hours=10)
         )
         db.add(feedback_s)
+
+    # 8. Seed Initial Preventive Maintenance Orders
+    wt_asset = db.query(InfrastructureAsset).filter(InfrastructureAsset.name.like("%Water Treatment Station WT-04%")).first()
+    water_dept = dept_map.get("Water Supply & Drainage")
+    water_crew = crew_map.get("Ward 4 Water Repair Crew")
+    if wt_asset and water_dept:
+        pm_order = PreventiveMaintenanceOrder(
+            order_code="PM-2026-0001",
+            infrastructure_id=wt_asset.id,
+            department_id=water_dept.id,
+            crew_id=water_crew.id if water_crew else None,
+            priority="CRITICAL",
+            recommended_action="Emergency ultrasonic leak detection squad to test pipeline joints and replace degrading pressure valve seals.",
+            notes="Assigned via Predictive Infrastructure Intelligence. High complaint velocity and overdue servicing flagged.",
+            target_completion_date=now + timedelta(days=2),
+            status="ASSIGNED",
+            assigned_by="Predictive Intelligence Dispatch",
+            created_at=now - timedelta(hours=6)
+        )
+        db.add(pm_order)
 
     db.commit()
     return {

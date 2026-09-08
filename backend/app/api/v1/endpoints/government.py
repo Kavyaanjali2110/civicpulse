@@ -52,6 +52,7 @@ def list_complaints(
     severity_level: Optional[str] = None,
     cluster_id: Optional[int] = None,
     search: Optional[str] = None,
+    source_channel: Optional[str] = Query(None, description="Filter by channel: WEB, WHATSAPP, SMS, WEBHOOK"),
     db: Session = Depends(get_db)
 ):
     """Returns paginated complaints with dynamic multi-attribute filters."""
@@ -63,7 +64,8 @@ def list_complaints(
         status=status,
         severity_level=severity_level,
         cluster_id=cluster_id,
-        search=search
+        search=search,
+        source_channel=source_channel
     )
     total_pages = math.ceil(total / page_size) if total > 0 else 1
 
@@ -146,3 +148,9 @@ def get_categories(db: Session = Depends(get_db)):
 @router.get("/infrastructure-assets", response_model=List[InfrastructureAssetResponse], summary="List Infrastructure Assets")
 def get_infrastructure_assets(db: Session = Depends(get_db)):
     return infrastructure_service.get_all(db)
+
+
+@router.get("/omnichannel/stats", summary="Omnichannel Intake Statistics")
+def get_omnichannel_stats(db: Session = Depends(get_db)):
+    """Returns intake volumes, breakdown percentages, and notification counts across WEB, WHATSAPP, SMS, and WEBHOOK."""
+    return complaint_service.get_omnichannel_stats(db)

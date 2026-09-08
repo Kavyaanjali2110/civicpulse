@@ -53,8 +53,13 @@ class DuplicateDetector:
             return False, None, 0.0
 
         # 2. Filter candidates by spatial distance
+        if latitude is None or longitude is None:
+            return False, None, 0.0
+
         spatially_close = []
         for cand in recent_candidates:
+            if cand.latitude is None or cand.longitude is None:
+                continue
             dist = infrastructure_service.calculate_distance_meters(
                 latitude, longitude, cand.latitude, cand.longitude
             )

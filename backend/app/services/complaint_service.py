@@ -90,8 +90,12 @@ class ComplaintService:
         cluster_id: Optional[int] = None,
         search: Optional[str] = None,
         ward_id: Optional[int] = None,
+        source_channel: Optional[str] = None,
     ) -> Tuple[List[Complaint], int]:
         query = db.query(Complaint)
+
+        if source_channel:
+            query = query.filter(Complaint.source_channel == source_channel.upper())
 
         if ward_id is not None:
             query = query.filter(Complaint.ward_id == ward_id)
@@ -317,6 +321,70 @@ class ComplaintService:
             "sla_compliance_percentage": sla_compliance,
             "crew_workload": crew_workloads,
             "ward_breakdowns": ward_breakdowns,
+        }
+
+    @staticmethod
+    def get_omnichannel_stats(db: Session) -> Dict[str, Any]:
+        """Calculates multi-channel intake volume, channel breakdown, and notification statistics."""
+        from app.models.notification import Notification
+
+        all_complaints = db.query(Complaint).all()
+        total_complaints = len(all_complaints)
+        total_notifications = db.query(Notification).count()
+
+        channels = ["WEB", "WHATSAPP", "SMS", "WEBHOOK"]
+        channel_stats = {}
+
+        for ch in channels:
+            ch_items = [c for c in all_complaints if (c.source_channel or "WEB").upper() == ch]
+            ch_total = len(ch_items)
+            ch_resolved = len([c for c in ch_items if c.status == "RESOLVED"])
+            ch_active = ch_total - ch_resolved
+            ch_ips = round(sum(c.priority_score for c in ch_items) / ch_total, 1) if ch_total > 0 else 0.0
+            ch_pct = round((ch_total / total_complaints * 100), 1) if total_complaints > 0 else 0.0
+
+            channel_stats[ch] = {
+                "total": ch_total,
+                "active": ch_active,
+                "resolved": ch_resolved,
+                "percentage": ch_pct,
+                "avg_priority_score": ch_ips,
+            }
+
+        # Recent 10 omnichannel complaints
+        recent_complaints = (
+            db.query(Complaint)
+            .order_by(Complaint.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
+        recent_items = []
+        for c in recent_complaints:
+            recent_items.append({
+                "id": c.id,
+                "tracking_id": c.tracking_id,
+                "channel": c.source_channel or "WEB",
+                "external_message_id": c.external_message_id,
+                "citizen_name": c.citizen_name,
+                "citizen_contact": c.citizen_contact,
+                "category": c.category.name if c.category else "General",
+                "ward_id": c.ward_id,
+                "ward_name": c.ward_name or (f"Ward {c.ward_id}" if c.ward_id else "Unassigned"),
+                "priority_score": c.priority_score,
+                "severity_level": c.severity_level,
+                "status": c.status,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+
+        channel_breakdown = {ch: stats["total"] for ch, stats in channel_stats.items()}
+
+        return {
+            "total_complaints": total_complaints,
+            "total_notifications_sent": total_notifications,
+            "channel_stats": channel_stats,
+            "channel_breakdown": channel_breakdown,
+            "recent_complaints": recent_items,
         }
 
 

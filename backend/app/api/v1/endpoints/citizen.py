@@ -32,104 +32,45 @@ def submit_complaint(
     db: Session = Depends(get_db)
 ):
     """Submits a new citizen complaint via voice/text in any language.
-    Executes the full AI pipeline:
-    - Language detection & English normalization
-    - Category & Subcategory NLP classification
-    - Multi-factor Severity scoring
-    - Semantic & spatial deduplication
-    - Infrastructure Priority Score (IPS)
-    - Explainable AI recommendation generation
+    Routes through the unified omnichannel ingestion pipeline.
     """
-    # 1. Execute AI Pipeline
-    ai_result = civic_pipeline.process_complaint(
-        raw_text=payload.raw_text,
-        latitude=payload.latitude,
-        longitude=payload.longitude,
-        explicit_category_id=payload.category_id,
-        db=db
-    )
+    from app.schemas.webhook import NormalizedComplaintPayload
+    from app.services.unified_ingestion_service import unified_ingestion_service
 
-    resolved_category_id = ai_result["category_id"]
-    category = db.query(Category).filter(Category.id == resolved_category_id).first()
-    category_name = category.name if category else "General Civic Grievance"
-    sla_hours = category.default_sla_hours if category else 48
-
-    # 2. Persist in Database
-    tracking_id = complaint_service.generate_tracking_id()
-    while db.query(Complaint).filter(Complaint.tracking_id == tracking_id).first():
-        tracking_id = complaint_service.generate_tracking_id()
-
-    complaint = Complaint(
-        tracking_id=tracking_id,
+    normalized = NormalizedComplaintPayload(
+        source_channel="WEB",
         citizen_name=payload.citizen_name,
-        citizen_contact=payload.citizen_contact,
-        raw_text=payload.raw_text,
-        detected_language=ai_result["detected_language"],
-        translated_text=ai_result["translated_text"],
-        audio_url=payload.audio_url,
-        image_url=payload.image_url,
+        citizen_identifier=payload.citizen_contact,
+        raw_message=payload.raw_text,
         latitude=payload.latitude,
         longitude=payload.longitude,
         address=payload.address,
-        category_id=resolved_category_id,
-        subcategory=ai_result.get("subcategory"),
-        severity_score=ai_result["severity_score"],
-        severity_level=ai_result["severity_level"],
-        priority_score=ai_result["priority_score"],
-        status="RECEIVED",
-        cluster_id=None,
-        is_duplicate=ai_result["is_duplicate"],
-        parent_complaint_id=ai_result.get("parent_complaint_id"),
+        image_url=payload.image_url,
+        audio_url=payload.audio_url,
     )
-    db.add(complaint)
-    db.flush()
-
-    # Initial Audit Trail
-    audit = AuditLog(
-        complaint_id=complaint.id,
-        previous_status=None,
-        new_status="RECEIVED",
-        changed_by=payload.citizen_name or "Citizen Submission",
-        notes=f"Registered via portal in {ai_result['detected_language'].upper()}. Category: {category_name}.",
+    result = unified_ingestion_service.ingest(
+        db=db, payload=normalized, background_tasks=background_tasks
     )
-    db.add(audit)
-    db.commit()
-    db.refresh(complaint)
 
-    # 3. Schedule background spatial cluster & hotspot update
-    def recluster_job():
-        from app.core.database import SessionLocal
-        job_db = SessionLocal()
-        try:
-            civic_pipeline.run_cluster_and_trend_intelligence(job_db)
-        finally:
-            job_db.close()
-
-    background_tasks.add_task(recluster_job)
-
-    # 4. Construct citizen confirmation message
-    if ai_result["is_duplicate"]:
-        confirm_msg = f"Your grievance has been linked with an existing active report for this location to escalate priority."
-    elif ai_result["severity_level"] in ["CRITICAL", "HIGH"]:
-        confirm_msg = f"High priority detected near sensitive infrastructure. Municipal response dispatch initiated."
-    else:
-        confirm_msg = f"Your complaint has been successfully registered and routed to the {category_name} department."
+    category = db.query(Category).filter(Category.id == result.category_id).first()
+    sla_hours = category.default_sla_hours if category else 48
+    complaint = db.query(Complaint).filter(Complaint.id == result.complaint_id).first()
 
     return CitizenSubmissionResponse(
-        tracking_id=complaint.tracking_id,
-        status=complaint.status,
-        detected_language=complaint.detected_language,
-        translated_text=complaint.translated_text,
-        category_id=complaint.category_id,
-        predicted_category=category_name,
-        subcategory=complaint.subcategory,
-        severity_score=complaint.severity_score,
-        severity_level=complaint.severity_level,
-        priority_score=complaint.priority_score,
+        tracking_id=result.tracking_id,
+        status=result.status,
+        detected_language=result.detected_language,
+        translated_text=result.translated_text,
+        category_id=result.category_id,
+        predicted_category=result.category,
+        subcategory=result.subcategory,
+        severity_score=result.severity_score,
+        severity_level=result.severity_level,
+        priority_score=result.priority_score,
         estimated_sla_hours=sla_hours,
-        is_duplicate=complaint.is_duplicate,
-        message=confirm_msg,
-        xai_explanation=ai_result.get("xai_explanation")
+        is_duplicate=complaint.is_duplicate if complaint else False,
+        message=result.message,
+        xai_explanation=result.xai_explanation
     )
 
 

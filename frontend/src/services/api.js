@@ -21,4 +21,16 @@ export const checkHealth = async () => {
   }
 };
 
+export const resetDemoState = async () => {
+  try {
+    const response = await apiClient.post('/system/demo-reset');
+    return { success: true, data: response.data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.detail || error.message || 'Demo reset failed',
+    };
+  }
+};
+
 export default apiClient;

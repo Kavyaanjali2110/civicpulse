@@ -7,6 +7,7 @@ from app.schemas.hotspot import HotspotClusterResponse
 from app.schemas.crew_assignment import CrewAssignmentResponse
 from app.schemas.resolution_evidence import ResolutionEvidenceResponse
 from app.schemas.citizen_feedback import CitizenFeedbackResponse
+from app.schemas.notification import NotificationResponse
 
 
 class ComplaintBase(BaseModel):
@@ -17,8 +18,8 @@ class ComplaintBase(BaseModel):
     translated_text: Optional[str] = None
     audio_url: Optional[str] = None
     image_url: Optional[str] = None
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
     address: Optional[str] = None
     category_id: Optional[int] = None
     subcategory: Optional[str] = None
@@ -27,7 +28,8 @@ class ComplaintBase(BaseModel):
 
 
 class ComplaintCreate(ComplaintBase):
-    pass
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 
 class ComplaintStatusUpdate(BaseModel):
@@ -75,6 +77,11 @@ class SLAMetrics(BaseModel):
 class ComplaintResponse(BaseModel):
     id: int
     tracking_id: str
+    source_channel: Optional[str] = "WEB"
+    external_message_id: Optional[str] = None
+    external_sender_id: Optional[str] = None
+    ingestion_timestamp: Optional[datetime] = None
+
     citizen_name: Optional[str] = None
     citizen_contact: Optional[str] = None
     raw_text: str
@@ -82,8 +89,8 @@ class ComplaintResponse(BaseModel):
     translated_text: str
     audio_url: Optional[str] = None
     image_url: Optional[str] = None
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     address: Optional[str] = None
     ward_id: Optional[int] = None
     ward_name: Optional[str] = None
@@ -108,6 +115,7 @@ class ComplaintResponse(BaseModel):
     citizen_feedback: Optional[CitizenFeedbackResponse] = None
     sla_metrics: Optional[SLAMetrics] = None
     current_assignment: Optional[CrewAssignmentResponse] = None
+    notifications: Optional[List[NotificationResponse]] = []
 
     model_config = ConfigDict(from_attributes=True)
 

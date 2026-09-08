@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.orm import Session
 from app.core.database import Base, engine, SessionLocal
-from app.models import Category, InfrastructureAsset, HotspotCluster, Complaint, AuditLog
+import app.models  # Registers all models including Notification with Base.metadata
 from app.db.seed_data import seed_database
 
 

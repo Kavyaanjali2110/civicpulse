@@ -8,6 +8,10 @@ from app.models.field_crew import FieldCrew
 from app.models.crew_assignment import CrewAssignment
 from app.models.resolution_evidence import ResolutionEvidence
 from app.models.citizen_feedback import CitizenFeedback
+from app.models.asset_health import AssetHealthSnapshot
+from app.models.asset_risk import AssetRiskPrediction
+from app.models.preventive_maintenance import PreventiveMaintenanceOrder
+from app.models.notification import Notification
 
 __all__ = [
     "Category",
@@ -20,4 +24,8 @@ __all__ = [
     "CrewAssignment",
     "ResolutionEvidence",
     "CitizenFeedback",
+    "AssetHealthSnapshot",
+    "AssetRiskPrediction",
+    "PreventiveMaintenanceOrder",
+    "Notification",
 ]

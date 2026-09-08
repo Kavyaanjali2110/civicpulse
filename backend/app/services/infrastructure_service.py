@@ -34,8 +34,10 @@ class InfrastructureService:
         return asset
 
     @staticmethod
-    def calculate_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    def calculate_distance_meters(lat1: Optional[float], lon1: Optional[float], lat2: Optional[float], lon2: Optional[float]) -> float:
         """Haversine formula to calculate distance in meters between two lat/lon points."""
+        if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
+            return float("inf")
         R = 6371000.0  # Earth radius in meters
         phi1 = math.radians(lat1)
         phi2 = math.radians(lat2)
@@ -54,9 +56,13 @@ class InfrastructureService:
         cls, db: Session, lat: float, lon: float, max_radius_meters: float = 1000.0
     ) -> List[Tuple[InfrastructureAsset, float]]:
         """Finds all infrastructure assets within max_radius_meters of (lat, lon) with exact distance."""
+        if lat is None or lon is None:
+            return []
         assets = db.query(InfrastructureAsset).all()
         nearby = []
         for asset in assets:
+            if asset.latitude is None or asset.longitude is None:
+                continue
             dist = cls.calculate_distance_meters(lat, lon, asset.latitude, asset.longitude)
             if dist <= max_radius_meters:
                 nearby.append((asset, dist))

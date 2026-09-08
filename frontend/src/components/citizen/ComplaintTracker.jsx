@@ -16,7 +16,10 @@ import {
   Camera,
   HardHat,
   Send,
-  Sparkles
+  Sparkles,
+  MessageSquare,
+  Smartphone,
+  Bell
 } from 'lucide-react';
 import SeverityBadge from '../common/SeverityBadge';
 import ResolutionEvidenceViewer from '../dashboard/ResolutionEvidenceViewer';
@@ -206,10 +209,23 @@ export default function ComplaintTracker({ initialTrackingId = '' }) {
           {/* Header Banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
-              <div className="flex items-center space-x-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono font-bold text-lg text-teal-900 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-lg">
                   {complaint.tracking_id}
                 </span>
+                {complaint.source_channel && (
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 ${
+                    complaint.source_channel === 'WHATSAPP'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : complaint.source_channel === 'SMS'
+                      ? 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                      : complaint.source_channel === 'WEBHOOK'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-sky-100 text-sky-800 border border-sky-300'
+                  }`}>
+                    {complaint.source_channel === 'WHATSAPP' ? 'WhatsApp' : complaint.source_channel === 'SMS' ? 'SMS' : complaint.source_channel === 'WEBHOOK' ? 'Partner Webhook' : 'Web Portal'}
+                  </span>
+                )}
                 <SeverityBadge level={complaint.severity_level} score={complaint.severity_score} />
                 {sla?.status && (
                   <span
@@ -430,7 +446,7 @@ export default function ComplaintTracker({ initialTrackingId = '' }) {
                 {complaint.address || 'Location coordinates recorded'}
               </p>
               <p className="font-mono text-slate-500 text-[11px]">
-                Ward: {complaint.ward_name || `Ward ${complaint.ward_id}`} • Coordinates: {complaint.latitude.toFixed(5)}, {complaint.longitude.toFixed(5)}
+                Ward: {complaint.ward_name || `Ward ${complaint.ward_id || 1}`} • Coordinates: {complaint.latitude != null && complaint.longitude != null ? `${complaint.latitude.toFixed(4)}, ${complaint.longitude.toFixed(4)}` : 'SMS Profile / Geocoded Fallback'}
               </p>
               {complaint.cluster && (
                 <div className="flex items-center space-x-1.5 pt-2 border-t border-slate-200 text-amber-800 text-[11px]">
@@ -479,6 +495,45 @@ export default function ComplaintTracker({ initialTrackingId = '' }) {
               )}
             </div>
           </div>
+
+          {/* Two-Way Citizen Notifications Feed */}
+          {complaint.notifications && complaint.notifications.length > 0 && (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  <Bell className="w-4 h-4 text-emerald-600" />
+                  <span>Citizen SMS / WhatsApp Notification History</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono font-bold">
+                  {complaint.notifications.length} Alerts Dispatched
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {complaint.notifications.map((notif, idx) => (
+                  <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <span className="font-bold text-emerald-700 flex items-center gap-1">
+                        {notif.channel === 'WHATSAPP' ? (
+                          <MessageSquare className="w-3 h-3 text-emerald-600" />
+                        ) : (
+                          <Smartphone className="w-3 h-3 text-indigo-600" />
+                        )}
+                        {notif.event_type}
+                      </span>
+                      <span className="font-mono text-emerald-600 font-semibold">{notif.status}</span>
+                    </div>
+                    <p className="text-slate-700 italic text-[11px]">
+                      "{notif.message}"
+                    </p>
+                    <div className="text-[10px] text-slate-400 font-mono pt-1">
+                      Recipient: {notif.citizen_identifier}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

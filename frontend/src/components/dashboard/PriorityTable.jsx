@@ -257,6 +257,17 @@ export default function PriorityTable({
                           <span className="font-bold text-slate-900 group-hover:text-teal-800">
                             {c.tracking_id}
                           </span>
+                          {c.source_channel && c.source_channel !== 'WEB' && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
+                              c.source_channel === 'WHATSAPP'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : c.source_channel === 'SMS'
+                                ? 'bg-indigo-100 text-indigo-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {c.source_channel}
+                            </span>
+                          )}
                         </div>
                       </td>
 

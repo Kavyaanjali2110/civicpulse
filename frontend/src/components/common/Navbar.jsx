@@ -9,9 +9,10 @@ import {
   ShieldCheck, 
   LayoutDashboard,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
-import { checkHealth } from '../../services/api';
+import { checkHealth, resetDemoState } from '../../services/api';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +23,21 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [resettingDemo, setResettingDemo] = useState(false);
+
+  const handleDemoReset = async () => {
+    if (!window.confirm("Restore deterministic demonstration state? This will re-seed all sample data.")) {
+      return;
+    }
+    setResettingDemo(true);
+    const res = await resetDemoState();
+    setResettingDemo(false);
+    if (res.success) {
+      window.location.reload();
+    } else {
+      alert(res.error || "Failed to reset demo state");
+    }
+  };
 
   useEffect(() => {
     const checkApi = async () => {
@@ -173,6 +189,17 @@ export default function Navbar() {
                 </button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={handleDemoReset}
+              disabled={resettingDemo}
+              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+              title="Restore deterministic demonstration state"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-amber-700 ${resettingDemo ? 'animate-spin' : ''}`} />
+              <span>{resettingDemo ? 'Resetting...' : 'Reset Demo'}</span>
+            </button>
 
             <div className="hidden lg:flex items-center space-x-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
               {backendStatus === 'online' ? (

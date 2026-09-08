@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   Menu,
   X,
-  HardHat
+  HardHat,
+  MessageSquare
 } from 'lucide-react';
 import OverviewStats from '../components/dashboard/OverviewStats';
 import WorkflowKPIs from '../components/dashboard/WorkflowKPIs';
@@ -31,9 +32,15 @@ import TrendAnalytics from '../components/dashboard/TrendAnalytics';
 import RecommendationsPanel from '../components/dashboard/RecommendationsPanel';
 import StatusUpdateModal from '../components/dashboard/StatusUpdateModal';
 import CrewAssignmentModal from '../components/dashboard/CrewAssignmentModal';
+import AssetRiskTable from '../components/predictive/AssetRiskTable';
+import AssetIntelligenceModal from '../components/predictive/AssetIntelligenceModal';
+import PredictiveCharts from '../components/predictive/PredictiveCharts';
+import OmnichannelIntakeView from '../components/omnichannel/OmnichannelIntakeView';
 import { useAuth } from '../context/AuthContext';
 import { govService } from '../services/govService';
 import { citizenService } from '../services/citizenService';
+import { predictiveService } from '../services/predictiveService';
+import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export default function GovernmentDashboard() {
   const { user, logout } = useAuth();
@@ -44,6 +51,15 @@ export default function GovernmentDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reclustering, setReclustering] = useState(false);
+
+  // Predictive Intelligence States
+  const [predictiveAssetsRisk, setPredictiveAssetsRisk] = useState([]);
+  const [wardRisks, setWardRisks] = useState([]);
+  const [predictiveRecs, setPredictiveRecs] = useState([]);
+  const [preventiveOrders, setPreventiveOrders] = useState([]);
+  const [selectedPredictiveAsset, setSelectedPredictiveAsset] = useState(null);
+  const [predictiveModalOpen, setPredictiveModalOpen] = useState(false);
+  const [selectedPredictionWindow, setSelectedPredictionWindow] = useState(30);
 
   // Filter propagation states for PriorityTable
   const [priorityFilterStatus, setPriorityFilterStatus] = useState('ALL');
@@ -82,6 +98,10 @@ export default function GovernmentDashboard() {
         trendsRes,
         recsRes,
         catsRes,
+        riskRes,
+        wardRisksRes,
+        predRecsRes,
+        ordersRes,
       ] = await Promise.all([
         govService.getOverviewStats(),
         govService.getWorkflowStats().catch(() => null),
@@ -92,6 +112,10 @@ export default function GovernmentDashboard() {
         govService.getTrends(),
         govService.getAIRecommendations(),
         citizenService.getCategories(),
+        predictiveService.getAssetsRisk({ prediction_window: selectedPredictionWindow }).catch(() => []),
+        predictiveService.getWardRisks().catch(() => []),
+        predictiveService.getPredictiveRecommendations().catch(() => []),
+        predictiveService.getPreventiveOrders().catch(() => []),
       ]);
 
       setStats(statsRes);
@@ -103,13 +127,17 @@ export default function GovernmentDashboard() {
       setTrendsData(trendsRes);
       setRecommendationsData(recsRes);
       setCategories(catsRes);
+      setPredictiveAssetsRisk(riskRes || []);
+      setWardRisks(wardRisksRes || []);
+      setPredictiveRecs(predRecsRes || []);
+      setPreventiveOrders(ordersRes || []);
     } catch (err) {
       console.error("Dashboard fetch failed", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedPredictionWindow]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -189,6 +217,8 @@ export default function GovernmentDashboard() {
 
   const navItems = [
     { key: 'overview', label: 'Overview', icon: LayoutDashboard, target: 'sec-overview' },
+    { key: 'omnichannel', label: 'Omnichannel Intake', icon: MessageSquare, target: 'sec-omnichannel' },
+    { key: 'predictive', label: 'Predictive Intelligence', icon: ShieldAlert, target: 'sec-predictive' },
     { key: 'dispatch', label: 'Crew Dispatch & SLA', icon: HardHat, target: 'sec-dispatch' },
     { key: 'map', label: 'Infrastructure Map', icon: MapPin, target: 'sec-map' },
     { key: 'queue', label: 'Priority Queue', icon: ListOrdered, target: 'sec-priority' },
@@ -323,6 +353,108 @@ export default function GovernmentDashboard() {
         {/* 1. Overview KPI Cards */}
         <OverviewStats stats={stats} loading={loading} onCardClick={handleKpiCardClick} />
 
+        {/* Omnichannel Grievance Intake & Notifications Section (Track C) */}
+        <div id="sec-omnichannel">
+          <OmnichannelIntakeView />
+        </div>
+
+        {/* Predictive Infrastructure Intelligence Section */}
+        <div id="sec-predictive" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ShieldAlert className="w-5 h-5 text-rose-500" />
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                Predictive Infrastructure Intelligence
+              </h2>
+              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-extrabold uppercase tracking-wide border border-rose-200">
+                Track B
+              </span>
+            </div>
+            <span className="text-xs text-slate-500">
+              Proactive failure probability modeling &amp; preventive maintenance
+            </span>
+          </div>
+
+          {/* 6 Predictive KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Card 1: Critical Assets */}
+            <div className="bg-white border border-rose-200/80 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">Critical Assets</span>
+              <div className="text-2xl font-black text-rose-600 font-mono mt-1">
+                {predictiveAssetsRisk.filter((a) => a.health_category === 'CRITICAL' || a.predictions?.['30_days']?.risk_level === 'CRITICAL').length}
+              </div>
+              <span className="text-[10px] text-rose-500 font-medium">Immediate Hazard</span>
+            </div>
+
+            {/* Card 2: High-Risk Assets */}
+            <div className="bg-white border border-orange-200/80 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">High-Risk Assets</span>
+              <div className="text-2xl font-black text-orange-600 font-mono mt-1">
+                {predictiveAssetsRisk.filter((a) => a.health_category === 'AT_RISK' || a.predictions?.['30_days']?.risk_level === 'HIGH').length}
+              </div>
+              <span className="text-[10px] text-orange-500 font-medium">Degrading Fast</span>
+            </div>
+
+            {/* Card 3: At-Risk Wards */}
+            <div className="bg-white border border-amber-200/80 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">At-Risk Wards</span>
+              <div className="text-2xl font-black text-amber-600 font-mono mt-1">
+                {wardRisks.filter((w) => w.requires_preventive_intervention).length}
+              </div>
+              <span className="text-[10px] text-amber-600 font-medium">Intervention Req.</span>
+            </div>
+
+            {/* Card 4: Predicted Failures (7 Days) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">Failures (7d)</span>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                {predictiveAssetsRisk.filter((a) => (a.predictions?.['7_days']?.risk_score || 0) >= 0.5).length}
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium">Next 7 Days</span>
+            </div>
+
+            {/* Card 5: Predicted Failures (30 Days) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">Failures (30d)</span>
+              <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                {predictiveAssetsRisk.filter((a) => (a.predictions?.['30_days']?.risk_score || 0) >= 0.5).length}
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium">Next 30 Days</span>
+            </div>
+
+            {/* Card 6: Preventive Actions Pending */}
+            <div className="bg-white border border-sky-200/80 rounded-2xl p-4 shadow-sm">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase block">Actions Pending</span>
+              <div className="text-2xl font-black text-sky-600 font-mono mt-1">
+                {predictiveRecs.length}
+              </div>
+              <span className="text-[10px] text-sky-600 font-medium">Work Orders Rec.</span>
+            </div>
+          </div>
+
+          {/* Predictive Analytics Charts */}
+          <PredictiveCharts
+            assetsRisk={predictiveAssetsRisk}
+            wardRisks={wardRisks}
+          />
+
+          {/* Asset Risk Table */}
+          <AssetRiskTable
+            assetsRisk={predictiveAssetsRisk}
+            loading={loading}
+            selectedWindow={selectedPredictionWindow}
+            onWindowChange={(w) => setSelectedPredictionWindow(w)}
+            onSelectAsset={(asset) => {
+              setSelectedPredictiveAsset(asset);
+              setPredictiveModalOpen(true);
+            }}
+            onCreateWorkOrder={(asset) => {
+              setSelectedPredictiveAsset(asset);
+              setPredictiveModalOpen(true);
+            }}
+          />
+        </div>
+
         {/* 2. Field Crew Dispatch & SLA Section */}
         <div id="sec-dispatch">
           <WorkflowKPIs workflowStats={workflowStats} />
@@ -336,9 +468,14 @@ export default function GovernmentDashboard() {
             heatmapPoints={heatmapPoints}
             complaints={priorityData.ranked_complaints}
             categories={categories}
+            predictiveAssetsRisk={predictiveAssetsRisk}
             onRecluster={handleRecluster}
             reclustering={reclustering}
             onSelectComplaint={handleOpenStatusModal}
+            onSelectAsset={(asset) => {
+              setSelectedPredictiveAsset(asset);
+              setPredictiveModalOpen(true);
+            }}
           />
         </div>
 
@@ -396,6 +533,17 @@ export default function GovernmentDashboard() {
           setSelectedComplaintForAssign(null);
         }}
         onSuccess={() => fetchDashboardData(true)}
+      />
+
+      {/* Predictive Asset Intelligence & Preventive Work Order Modal */}
+      <AssetIntelligenceModal
+        asset={selectedPredictiveAsset}
+        isOpen={predictiveModalOpen}
+        onClose={() => {
+          setPredictiveModalOpen(false);
+          setSelectedPredictiveAsset(null);
+        }}
+        onOrderCreated={() => fetchDashboardData(true)}
       />
     </div>
   );

@@ -13,6 +13,7 @@ from app.schemas.crew_assignment import CrewAssignmentCreate, CrewAssignmentActi
 from app.schemas.resolution_evidence import ResolutionEvidenceCreate
 from app.schemas.citizen_feedback import CitizenFeedbackCreate
 from app.schemas.complaint import SLAMetrics
+from app.services.notification_service import notification_service
 
 
 class DispatchService:
@@ -147,6 +148,10 @@ class DispatchService:
         db.commit()
         db.refresh(assignment)
         db.refresh(complaint)
+
+        # Trigger citizen assignment notification
+        notification_service.send_notification(db, complaint, "ASSIGNED")
+
         return assignment
 
     @classmethod
@@ -234,6 +239,10 @@ class DispatchService:
         db.commit()
         db.refresh(assignment)
         db.refresh(complaint)
+
+        # Trigger citizen work in progress notification
+        notification_service.send_notification(db, complaint, "IN_PROGRESS")
+
         return assignment
 
     @classmethod
@@ -342,6 +351,11 @@ class DispatchService:
         db.commit()
         db.refresh(assignment)
         db.refresh(complaint)
+
+        # Trigger citizen resolution & feedback request notifications
+        notification_service.send_notification(db, complaint, "RESOLVED")
+        notification_service.send_notification(db, complaint, "FEEDBACK_REQUEST")
+
         return assignment
 
     @classmethod

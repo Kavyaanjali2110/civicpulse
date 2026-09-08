@@ -52,6 +52,32 @@ const hospitalIcon = createPoiIcon('HOSPITAL', '🏥', '#dc2626');
 const schoolIcon = createPoiIcon('SCHOOL', '🏫', '#2563eb');
 const transitIcon = createPoiIcon('TRANSIT_HUB', '🚉', '#d97706');
 
+// Predictive Risk Hazard Icon
+const predictiveRiskIcon = (riskLevel) => {
+  const bg = riskLevel === 'CRITICAL' ? '#e11d48' : riskLevel === 'HIGH' ? '#ea580c' : riskLevel === 'MEDIUM' ? '#d97706' : '#10b981';
+  return new L.DivIcon({
+    className: 'custom-risk-icon',
+    html: `
+      <div style="
+        background: ${bg};
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px ${bg}aa, 0 2px 6px rgba(0,0,0,0.35);
+        border: 2px solid #ffffff;
+        font-size: 12px;
+      ">
+        ⚠️
+      </div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+};
+
 // Complaint Pin Icon
 const complaintPinIcon = (sevLevel) => {
   const color = sevLevel === 'CRITICAL' ? '#e11d48' : sevLevel === 'HIGH' ? '#ea580c' : '#0284c7';
@@ -84,32 +110,44 @@ export default function InteractiveMap({
   heatmapPoints = [],
   complaints = [],
   categories = [],
+  predictiveAssetsRisk = [],
   onRecluster,
   reclustering = false,
   onSelectComplaint,
+  onSelectAsset,
 }) {
   // Layer visibility state
   const [showHotspots, setShowHotspots] = useState(true);
   const [showAssets, setShowAssets] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showPins, setShowPins] = useState(true);
+  const [showPredictiveRisk, setShowPredictiveRisk] = useState(true);
 
   // Filters
   const [selectedCatId, setSelectedCatId] = useState('ALL');
 
   const defaultCenter = useMemo(() => [19.0760, 72.8800], []);
 
-  // Filtered complaints and heatmap points
+  // Filtered complaints and heatmap points (safeguarded against null/NaN coordinates)
   const filteredComplaints = useMemo(() => {
-    if (selectedCatId === 'ALL') return complaints;
-    return complaints.filter((c) => c.category_id === parseInt(selectedCatId));
+    const list = selectedCatId === 'ALL'
+      ? complaints
+      : complaints.filter((c) => c.category_id === parseInt(selectedCatId));
+    return list.filter(
+      (c) => c && c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude)
+    );
   }, [complaints, selectedCatId]);
 
   const filteredHeatmap = useMemo(() => {
-    if (selectedCatId === 'ALL') return heatmapPoints;
-    const cat = categories.find((c) => c.id === parseInt(selectedCatId));
-    if (!cat) return heatmapPoints;
-    return heatmapPoints.filter((pt) => pt.category === cat.name);
+    const base = selectedCatId === 'ALL'
+      ? heatmapPoints
+      : (() => {
+          const cat = categories.find((c) => c.id === parseInt(selectedCatId));
+          return cat ? heatmapPoints.filter((pt) => pt.category === cat.name) : heatmapPoints;
+        })();
+    return base.filter(
+      (pt) => pt && pt.latitude != null && pt.longitude != null && !isNaN(pt.latitude) && !isNaN(pt.longitude)
+    );
   }, [heatmapPoints, selectedCatId, categories]);
 
   return (
@@ -183,6 +221,15 @@ export default function InteractiveMap({
               }`}
             >
               📍 Pins ({filteredComplaints.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPredictiveRisk(!showPredictiveRisk)}
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                showPredictiveRisk ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              ⚠️ Predictive Risk ({predictiveAssetsRisk.length || infrastructureAssets.length})
             </button>
           </div>
 
@@ -374,6 +421,65 @@ export default function InteractiveMap({
                 </Popup>
               </Marker>
             ))}
+          {/* 5. Predictive Infrastructure Risk Layer */}
+          {showPredictiveRisk &&
+            predictiveAssetsRisk.map((asset) => {
+              const pred30 = asset.predictions?.['30_days'] || {};
+              const riskLevel = pred30.risk_level || 'MEDIUM';
+              const riskPct = pred30.risk_percentage || 0;
+              const ringColor = riskLevel === 'CRITICAL' ? '#e11d48' : riskLevel === 'HIGH' ? '#ea580c' : riskLevel === 'MEDIUM' ? '#d97706' : '#10b981';
+
+              return (
+                <React.Fragment key={`pred-asset-${asset.asset_id}`}>
+                  <Circle
+                    center={[asset.latitude, asset.longitude]}
+                    radius={riskLevel === 'CRITICAL' ? 260 : riskLevel === 'HIGH' ? 200 : 140}
+                    pathOptions={{
+                      color: ringColor,
+                      fillColor: ringColor,
+                      fillOpacity: riskLevel === 'CRITICAL' ? 0.35 : 0.22,
+                      weight: 2,
+                    }}
+                  />
+                  <Marker
+                    position={[asset.latitude, asset.longitude]}
+                    icon={predictiveRiskIcon(riskLevel)}
+                  >
+                    <Popup>
+                      <div className="p-1 space-y-2 max-w-xs text-xs">
+                        <div className="flex items-center justify-between border-b pb-1">
+                          <strong className="text-slate-900 text-sm">{asset.asset_name}</strong>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            riskLevel === 'CRITICAL' ? 'bg-rose-100 text-rose-800' :
+                            riskLevel === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                            'bg-amber-100 text-amber-800'
+                          }`}>
+                            {riskLevel} RISK
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-[11px] bg-slate-50 p-1.5 rounded">
+                          <div>Health Score: <strong>{asset.health_score} / 100</strong></div>
+                          <div>30d Failure Risk: <strong className="text-rose-600">{riskPct}%</strong></div>
+                        </div>
+                        <div className="text-slate-600 text-[11px]">
+                          <strong>Top Contributing Factor:</strong> {asset.contributing_factors?.[0] || 'Aging lifecycle'}
+                        </div>
+                        <div className="bg-slate-50 p-1.5 rounded border border-slate-200 text-[11px] text-slate-700">
+                          <strong>Recommended Action:</strong> {asset.recommended_action}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onSelectAsset && onSelectAsset(asset)}
+                          className="w-full py-1.5 px-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-center cursor-pointer transition-colors"
+                        >
+                          Inspect Asset Intelligence &amp; Dispatch
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              );
+            })}
         </MapContainer>
 
         {/* Floating Map Legend */}

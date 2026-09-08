@@ -40,11 +40,14 @@ class SpatialClusterEngine:
         eps_radians = eps_meters / cls.EARTH_RADIUS_METERS
 
         for cat_id in category_ids:
-            cat_complaints = [c for c in active_complaints if c.category_id == cat_id]
+            cat_complaints = [
+                c for c in active_complaints 
+                if c.category_id == cat_id and c.latitude is not None and c.longitude is not None
+            ]
             if len(cat_complaints) < min_samples:
                 continue
 
-            coords = np.array([[c.latitude, c.longitude] for c in cat_complaints])
+            coords = np.array([[float(c.latitude), float(c.longitude)] for c in cat_complaints], dtype=np.float64)
             coords_rad = np.radians(coords)
 
             dbscan = DBSCAN(eps=eps_radians, min_samples=min_samples, metric="haversine")
