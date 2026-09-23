@@ -11,3 +11,7 @@ Runs all 6 sequential steps:
 from tests.verify_flagship_demo import test_flagship_end_to_end_demo
 
 __all__ = ["test_flagship_end_to_end_demo"]
+
+
+if __name__ == "__main__":
+    test_flagship_end_to_end_demo()

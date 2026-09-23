@@ -299,7 +299,48 @@ docker compose up --build
 
 ---
 
-Engineering Implementation Notes
+## 🌐 Public Deployment Guide (Render & Vercel)
+
+CivicPulse AI is configured for decoupled cloud deployment using **Render** for the FastAPI backend and **Vercel** for the React/Vite frontend.
+
+### 1. Backend Deployment: Render Web Service
+
+- **Runtime**: Python 3 (or Docker)
+- **Root Directory**: `backend`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+  *(The backend reads the dynamic `PORT` environment variable assigned by Render, defaulting to `8000` locally).*
+- **Environment Variables**:
+  | Variable | Value / Description |
+  | :--- | :--- |
+  | `ENVIRONMENT` | `production` |
+  | `DEBUG` | `false` |
+  | `ALLOW_PROD_RESET` | `1` *(enables evaluator demo reset via UI)* |
+  | `BACKEND_CORS_ORIGINS` | `https://<your-vercel-app>.vercel.app` *(comma-separated allowed origins)* |
+
+Once deployed, note your public backend URL (e.g., `https://civicpulse-api.onrender.com`). Verify status at `/api/v1/health`.
+
+### 2. Frontend Deployment: Vercel
+
+- **Framework Preset**: Vite
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+- **SPA Routing Requirement**: Configured via [`frontend/vercel.json`](./frontend/vercel.json) rewrite rule (`/(.*) -> /index.html`) so direct navigation to routes like `/citizen/login`, `/government/dashboard`, and `/crew/dashboard` works without 404 errors.
+- **Environment Variables**:
+  | Variable | Value / Description |
+  | :--- | :--- |
+  | `VITE_API_BASE_URL` | `https://<your-render-backend>.onrender.com/api/v1` |
+
+> **Configuration Order**:
+> 1. Deploy the backend on Render first to obtain its live URL.
+> 2. Set `VITE_API_BASE_URL` in Vercel before triggering the frontend build so the live API endpoint is baked into the client bundle.
+> 3. Add your assigned Vercel URL to `BACKEND_CORS_ORIGINS` on Render to authorize browser cross-origin requests.
+
+---
+
+## 📐 Engineering Implementation Notes
 
 1. **AI Models vs Calibration**: The text classification engine utilizes a production-grade Scikit-Learn TF-IDF vectorizer + Logistic Regression model trained on municipal grievance corpora. The predictive maintenance models utilize calibrated multi-factor mathematical models integrating spatial proximity, complaint velocity, asset age, and maintenance history.
 2. **Mock Webhooks & Notification Dispatch**: WhatsApp, SMS, and partner webhooks use production-schema mock endpoints that execute the authentic end-to-end AI pipeline and store real database audit records without requiring paid external Twilio or Meta WhatsApp Business API credentials.
