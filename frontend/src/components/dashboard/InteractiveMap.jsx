@@ -22,6 +22,12 @@ import {
   MapPin
 } from 'lucide-react';
 import SeverityBadge from '../common/SeverityBadge';
+import { 
+  isValidCoordinate, 
+  ensureValidCenter, 
+  filterValidGisItems, 
+  DEFAULT_MAP_CENTER 
+} from '../../utils/gis';
 
 // Custom POI Icon builder
 const createPoiIcon = (type, emoji, color) => {
@@ -126,28 +132,75 @@ export default function InteractiveMap({
   // Filters
   const [selectedCatId, setSelectedCatId] = useState('ALL');
 
+  // Center coordinate safeguarded against invalid/missing coordinates
   const defaultCenter = useMemo(() => [19.0760, 72.8800], []);
+  const mapCenter = useMemo(() => ensureValidCenter(defaultCenter), [defaultCenter]);
 
-  // Filtered complaints and heatmap points (safeguarded against null/NaN coordinates)
+  // Lookup map of infrastructure assets for O(1) coordinate cross-referencing
+  const infrastructureAssetMap = useMemo(() => {
+    const map = new Map();
+    if (Array.isArray(infrastructureAssets)) {
+      infrastructureAssets.forEach((asset) => {
+        if (asset && asset.id != null) {
+          map.set(asset.id, asset);
+        }
+      });
+    }
+    return map;
+  }, [infrastructureAssets]);
+
+  // 1. Validated & normalized infrastructure POIs
+  const validAssets = useMemo(() => {
+    return filterValidGisItems(infrastructureAssets, null, (valid, skipped) => {
+      if (skipped > 0 && typeof console !== 'undefined' && console.debug) {
+        console.debug(`[InteractiveMap] Skipped ${skipped} infrastructure assets with invalid coordinates.`);
+      }
+    });
+  }, [infrastructureAssets]);
+
+  // 2. Validated & normalized predictive risk assets (resolves coordinates via infrastructure assets)
+  const validPredictiveRisk = useMemo(() => {
+    return filterValidGisItems(predictiveAssetsRisk, infrastructureAssetMap, (valid, skipped) => {
+      if (skipped > 0 && typeof console !== 'undefined' && console.debug) {
+        console.debug(`[InteractiveMap] Skipped ${skipped} predictive risk assets with invalid coordinates.`);
+      }
+    });
+  }, [predictiveAssetsRisk, infrastructureAssetMap]);
+
+  // 3. Validated & normalized DBSCAN hotspots
+  const validHotspots = useMemo(() => {
+    return filterValidGisItems(hotspots, null, (valid, skipped) => {
+      if (skipped > 0 && typeof console !== 'undefined' && console.debug) {
+        console.debug(`[InteractiveMap] Skipped ${skipped} hotspots with invalid coordinates.`);
+      }
+    });
+  }, [hotspots]);
+
+  // 4. Filtered and validated complaints (safeguarded against null GPS from SMS/webhooks)
   const filteredComplaints = useMemo(() => {
     const list = selectedCatId === 'ALL'
       ? complaints
-      : complaints.filter((c) => c.category_id === parseInt(selectedCatId));
-    return list.filter(
-      (c) => c && c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude)
-    );
+      : complaints.filter((c) => c && c.category_id === parseInt(selectedCatId));
+    return filterValidGisItems(list, null, (valid, skipped) => {
+      if (skipped > 0 && typeof console !== 'undefined' && console.debug) {
+        console.debug(`[InteractiveMap] Filtered ${skipped} complaints without valid coordinates.`);
+      }
+    });
   }, [complaints, selectedCatId]);
 
+  // 5. Filtered and validated heatmap density points (supports both {lat, lng} and {latitude, longitude})
   const filteredHeatmap = useMemo(() => {
     const base = selectedCatId === 'ALL'
       ? heatmapPoints
       : (() => {
-          const cat = categories.find((c) => c.id === parseInt(selectedCatId));
-          return cat ? heatmapPoints.filter((pt) => pt.category === cat.name) : heatmapPoints;
+          const cat = categories.find((c) => c && c.id === parseInt(selectedCatId));
+          return cat ? heatmapPoints.filter((pt) => pt && pt.category === cat.name) : heatmapPoints;
         })();
-    return base.filter(
-      (pt) => pt && pt.latitude != null && pt.longitude != null && !isNaN(pt.latitude) && !isNaN(pt.longitude)
-    );
+    return filterValidGisItems(base, null, (valid, skipped) => {
+      if (skipped > 0 && typeof console !== 'undefined' && console.debug) {
+        console.debug(`[InteractiveMap] Filtered ${skipped} heatmap points without valid coordinates.`);
+      }
+    });
   }, [heatmapPoints, selectedCatId, categories]);
 
   return (
@@ -193,7 +246,7 @@ export default function InteractiveMap({
                 showHotspots ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
-              🔥 Hotspots ({hotspots.length})
+              🔥 Hotspots ({validHotspots.length})
             </button>
             <button
               type="button"
@@ -202,7 +255,7 @@ export default function InteractiveMap({
                 showHeatmap ? 'bg-rose-100 text-rose-900 border border-rose-300' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
-              ⚡ Heat Density
+              ⚡ Heat Density ({filteredHeatmap.length})
             </button>
             <button
               type="button"
@@ -211,7 +264,7 @@ export default function InteractiveMap({
                 showAssets ? 'bg-blue-100 text-blue-900 border border-blue-300' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
-              🏥 Public POIs ({infrastructureAssets.length})
+              🏥 Public POIs ({validAssets.length})
             </button>
             <button
               type="button"
@@ -229,7 +282,7 @@ export default function InteractiveMap({
                 showPredictiveRisk ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
-              ⚠️ Predictive Risk ({predictiveAssetsRisk.length || infrastructureAssets.length})
+              ⚠️ Predictive Risk ({validPredictiveRisk.length})
             </button>
           </div>
 
@@ -249,7 +302,7 @@ export default function InteractiveMap({
       {/* Leaflet Map Canvas */}
       <div className="h-[460px] w-full rounded-2xl overflow-hidden border border-slate-200 relative shadow-sm">
         <MapContainer
-          center={defaultCenter}
+          center={mapCenter}
           zoom={13}
           scrollWheelZoom={true}
           className="h-full w-full"
@@ -262,7 +315,7 @@ export default function InteractiveMap({
           {/* 1. Heatmap Density Circles Layer */}
           {showHeatmap &&
             filteredHeatmap.map((pt, idx) => {
-              const radius = Math.max(80, pt.intensity * 240);
+              const radius = Math.max(80, (pt.intensity || 0.5) * 240);
               const color =
                 pt.intensity >= 0.8
                   ? '#e11d48'
@@ -272,12 +325,12 @@ export default function InteractiveMap({
 
               return (
                 <Circle
-                  key={`heat-${idx}`}
-                  center={[pt.lat, pt.lng]}
+                  key={`heat-${pt.tracking_id || idx}`}
+                  center={pt._coords}
                   radius={radius}
                   pathOptions={{
                     fillColor: color,
-                    fillOpacity: Math.min(0.35, pt.intensity * 0.45),
+                    fillOpacity: Math.min(0.35, (pt.intensity || 0.5) * 0.45),
                     color: color,
                     weight: 1,
                     opacity: 0.5,
@@ -285,9 +338,9 @@ export default function InteractiveMap({
                 >
                   <Tooltip direction="top" offset={[0, -5]} opacity={0.95}>
                     <div className="text-xs font-sans">
-                      <strong className="text-slate-900">{pt.title}</strong>
+                      <strong className="text-slate-900">{pt.title || 'Civic Issue'}</strong>
                       <div className="text-slate-500 text-[10px]">
-                        Intensity: {(pt.intensity * 100).toFixed(0)}% • {pt.category}
+                        Intensity: {((pt.intensity || 0.5) * 100).toFixed(0)}% • {pt.category || 'Civic'}
                       </div>
                     </div>
                   </Tooltip>
@@ -297,14 +350,14 @@ export default function InteractiveMap({
 
           {/* 2. DBSCAN Hotspots Layer */}
           {showHotspots &&
-            hotspots.map((h) => {
+            validHotspots.map((h) => {
               const isCritical = h.avg_severity >= 0.8 || h.aggregate_priority_score >= 80;
               const circleColor = isCritical ? '#dc2626' : '#d97706';
 
               return (
-                <React.Fragment key={`hotspot-${h.id}`}>
+                <React.Fragment key={`hotspot-${h.id || h.cluster_code}`}>
                   <Circle
-                    center={[h.centroid_lat, h.centroid_lon]}
+                    center={h._coords}
                     radius={h.radius_meters || 300}
                     pathOptions={{
                       fillColor: circleColor,
@@ -316,7 +369,7 @@ export default function InteractiveMap({
                   />
 
                   <CircleMarker
-                    center={[h.centroid_lat, h.centroid_lon]}
+                    center={h._coords}
                     radius={11}
                     pathOptions={{
                       fillColor: circleColor,
@@ -339,7 +392,7 @@ export default function InteractiveMap({
                           <strong>Category:</strong> {h.category?.name || 'Civic'}
                         </div>
                         <div className="text-slate-700">
-                          <strong>Priority (IPS):</strong> {h.aggregate_priority_score.toFixed(1)} / 100
+                          <strong>Priority (IPS):</strong> {(h.aggregate_priority_score || 0).toFixed(1)} / 100
                         </div>
                         <div className="bg-slate-50 p-2 rounded border border-slate-200 text-[11px] text-slate-700">
                           <strong className="text-slate-900 block mb-0.5">AI Summary:</strong>
@@ -360,7 +413,7 @@ export default function InteractiveMap({
 
           {/* 3. Critical Infrastructure POIs Layer */}
           {showAssets &&
-            infrastructureAssets.map((asset) => {
+            validAssets.map((asset) => {
               let icon = hospitalIcon;
               if (asset.asset_type === 'SCHOOL') icon = schoolIcon;
               if (asset.asset_type === 'TRANSIT_HUB') icon = transitIcon;
@@ -368,14 +421,14 @@ export default function InteractiveMap({
               return (
                 <Marker
                   key={`asset-${asset.id}`}
-                  position={[asset.latitude, asset.longitude]}
+                  position={asset._coords}
                   icon={icon}
                 >
                   <Popup>
                     <div className="p-1 text-xs">
                       <strong className="text-slate-900 block">{asset.name}</strong>
                       <span className="text-slate-500 text-[11px]">
-                        Type: {asset.asset_type} • Vulnerability Weight: {(asset.vulnerability_weight * 100).toFixed(0)}%
+                        Type: {asset.asset_type} • Vulnerability Weight: {((asset.vulnerability_weight || 1) * 100).toFixed(0)}%
                       </span>
                     </div>
                   </Popup>
@@ -390,8 +443,8 @@ export default function InteractiveMap({
           {showPins &&
             filteredComplaints.slice(0, 35).map((c) => (
               <Marker
-                key={`comp-${c.id}`}
-                position={[c.latitude, c.longitude]}
+                key={`comp-${c.id || c.tracking_id}`}
+                position={c._coords}
                 icon={complaintPinIcon(c.severity_level)}
                 eventHandlers={{
                   click: () => {
@@ -407,7 +460,7 @@ export default function InteractiveMap({
                     </div>
                     <p className="text-slate-700 italic">"{c.translated_text || c.raw_text}"</p>
                     <div className="flex items-center justify-between text-[11px] pt-1 border-t">
-                      <span>IPS: <strong>{c.priority_score.toFixed(1)}</strong></span>
+                      <span>IPS: <strong>{(c.priority_score || 0).toFixed(1)}</strong></span>
                       <span>Sev: <strong>{c.severity_level}</strong></span>
                     </div>
                     <button
@@ -423,16 +476,16 @@ export default function InteractiveMap({
             ))}
           {/* 5. Predictive Infrastructure Risk Layer */}
           {showPredictiveRisk &&
-            predictiveAssetsRisk.map((asset) => {
+            validPredictiveRisk.map((asset) => {
               const pred30 = asset.predictions?.['30_days'] || {};
               const riskLevel = pred30.risk_level || 'MEDIUM';
               const riskPct = pred30.risk_percentage || 0;
               const ringColor = riskLevel === 'CRITICAL' ? '#e11d48' : riskLevel === 'HIGH' ? '#ea580c' : riskLevel === 'MEDIUM' ? '#d97706' : '#10b981';
 
               return (
-                <React.Fragment key={`pred-asset-${asset.asset_id}`}>
+                <React.Fragment key={`pred-asset-${asset.asset_id || asset.id}`}>
                   <Circle
-                    center={[asset.latitude, asset.longitude]}
+                    center={asset._coords}
                     radius={riskLevel === 'CRITICAL' ? 260 : riskLevel === 'HIGH' ? 200 : 140}
                     pathOptions={{
                       color: ringColor,
@@ -442,7 +495,7 @@ export default function InteractiveMap({
                     }}
                   />
                   <Marker
-                    position={[asset.latitude, asset.longitude]}
+                    position={asset._coords}
                     icon={predictiveRiskIcon(riskLevel)}
                   >
                     <Popup>
@@ -469,7 +522,11 @@ export default function InteractiveMap({
                         </div>
                         <button
                           type="button"
-                          onClick={() => onSelectAsset && onSelectAsset(asset)}
+                          onClick={() => onSelectAsset && onSelectAsset({
+                            ...asset,
+                            latitude: asset._coords[0],
+                            longitude: asset._coords[1],
+                          })}
                           className="w-full py-1.5 px-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-center cursor-pointer transition-colors"
                         >
                           Inspect Asset Intelligence &amp; Dispatch

@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { MapPin, Navigation, Crosshair } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { isValidCoordinate, ensureValidCenter } from '../../utils/gis';
 
 // Custom Marker Pin Icon
 const pinIcon = new L.DivIcon({
@@ -42,7 +43,7 @@ function LocationMarker({ position, onPositionChange }) {
     },
   });
 
-  return position ? (
+  return position && isValidCoordinate(position[0], position[1]) ? (
     <Marker
       position={position}
       icon={pinIcon}
@@ -51,7 +52,9 @@ function LocationMarker({ position, onPositionChange }) {
         dragend(e) {
           const marker = e.target;
           const pos = marker.getLatLng();
-          onPositionChange(pos.lat, pos.lng);
+          if (pos && isValidCoordinate(pos.lat, pos.lng)) {
+            onPositionChange(pos.lat, pos.lng);
+          }
         },
       }}
     />
@@ -68,7 +71,12 @@ export default function LocationPicker({
   const [gpsError, setGpsError] = useState(null);
 
   const defaultCenter = useMemo(() => [19.0760, 72.8777], []);
-  const currentPos = latitude && longitude ? [latitude, longitude] : defaultCenter;
+  const currentPos = useMemo(() => {
+    if (isValidCoordinate(latitude, longitude)) {
+      return [Number(latitude), Number(longitude)];
+    }
+    return ensureValidCenter(defaultCenter);
+  }, [latitude, longitude, defaultCenter]);
 
   const handlePositionChange = (lat, lng) => {
     onLocationChange(lat, lng);
@@ -146,7 +154,9 @@ export default function LocationPicker({
       <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
         <span>{t('selected_coords')}:</span>
         <span className="font-mono text-slate-800 font-semibold">
-          {latitude ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : '19.07600, 72.87770'}
+          {isValidCoordinate(latitude, longitude)
+            ? `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`
+            : '19.07600, 72.87770'}
         </span>
       </div>
 
