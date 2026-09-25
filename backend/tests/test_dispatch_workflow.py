@@ -301,3 +301,79 @@ def test_workflow_stats_endpoint():
     assert len(data["crew_workload"]) >= 8
     assert "ward_breakdowns" in data
     assert len(data["ward_breakdowns"]) == 8
+
+
+def test_priority_ranking_assignment_fields_and_crew_filtering():
+    """Verify Bug 1 fix and Bug 3 data flow: priority-ranking returns assignment data and filters by crew_id."""
+    # 1. Fetch priority ranking and verify assignment keys
+    res_pr = client.get("/api/v1/gov/priority-ranking?limit=20")
+    assert res_pr.status_code == 200
+    ranked = res_pr.json()["ranked_complaints"]
+    assert len(ranked) > 0
+    # Every item must have the required keys
+    for item in ranked:
+        assert "current_assignment" in item
+        assert "assigned_crew_name" in item
+        assert "crew_assignments" in item
+        assert "sla_metrics" in item
+
+    # 2. Pick a top unassigned complaint with status RECEIVED
+    target_item = next((c for c in ranked if c.get("status") == "RECEIVED"), ranked[0])
+    cid = target_item["id"]
+    was_received = target_item.get("status") == "RECEIVED"
+
+    # 3. Dispatch to Crew 1
+    assign_res = client.post(
+        f"/api/v1/gov/complaints/{cid}/assign",
+        json={"crew_id": 1, "assigned_by": "Test Dispatcher", "notes": "Urgent dispatch to Crew 1"}
+    )
+    assert assign_res.status_code == 201
+    assert assign_res.json()["crew_id"] == 1
+    crew_1_name = assign_res.json()["crew"]["name"]
+
+    # 4. Verify priority ranking now reflects Crew 1
+    res_pr2 = client.get("/api/v1/gov/priority-ranking?limit=20")
+    ranked2 = res_pr2.json()["ranked_complaints"]
+    target2 = next((c for c in ranked2 if c["id"] == cid), None)
+    assert target2 is not None
+    if was_received:
+        assert target2["status"] == "INVESTIGATING"
+    else:
+        assert target2["status"] in ["INVESTIGATING", "IN_PROGRESS"]
+    assert target2["assigned_crew_name"] == crew_1_name
+    assert target2["current_assignment"] is not None
+    assert target2["current_assignment"]["crew_id"] == 1
+    assert target2["current_assignment"]["crew"]["name"] == crew_1_name
+    assert target2["sla_metrics"] is not None
+    assert "status" in target2["sla_metrics"]
+
+    # 6. Data Integrity Check: Crew 1 sees it, Crew 2 does NOT see it
+    crew_1_complaints = client.get("/api/v1/gov/crews/1/assigned-complaints").json()
+    assert any(c["id"] == cid for c in crew_1_complaints)
+
+    crew_2_complaints = client.get("/api/v1/gov/crews/2/assigned-complaints").json()
+    assert not any(c["id"] == cid for c in crew_2_complaints)
+
+    # 7. Reassignment: Reassign Complaint to Crew 2
+    reassign_res = client.post(
+        f"/api/v1/gov/complaints/{cid}/assign",
+        json={"crew_id": 2, "assigned_by": "Test Dispatcher", "notes": "Reassigned to Crew 2"}
+    )
+    assert reassign_res.status_code == 201
+    crew_2_name = reassign_res.json()["crew"]["name"]
+
+    # Verify priority ranking now reflects Crew 2
+    res_pr3 = client.get("/api/v1/gov/priority-ranking?limit=20")
+    target3 = next((c for c in res_pr3.json()["ranked_complaints"] if c["id"] == cid), None)
+    assert target3 is not None
+    assert target3["assigned_crew_name"] == crew_2_name
+    assert target3["current_assignment"]["crew_id"] == 2
+    assert target3["current_assignment"]["crew"]["name"] == crew_2_name
+
+    # Crew 2 now sees it
+    crew_2_updated = client.get("/api/v1/gov/crews/2/assigned-complaints").json()
+    assert any(c["id"] == cid for c in crew_2_updated)
+
+    # Crew 1 NO LONGER sees it
+    crew_1_updated = client.get("/api/v1/gov/crews/1/assigned-complaints").json()
+    assert not any(c["id"] == cid for c in crew_1_updated)

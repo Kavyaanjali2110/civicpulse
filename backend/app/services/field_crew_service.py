@@ -73,7 +73,10 @@ class FieldCrewService:
         query = (
             db.query(Complaint)
             .join(CrewAssignment, Complaint.id == CrewAssignment.complaint_id)
-            .filter(CrewAssignment.crew_id == crew_id)
+            .filter(
+                CrewAssignment.crew_id == crew_id,
+                CrewAssignment.assignment_status != "REASSIGNED"
+            )
         )
         if status:
             query = query.filter(CrewAssignment.assignment_status == status)

@@ -33,7 +33,8 @@ import PreventiveCompletionModal from '../components/crew/PreventiveCompletionMo
 
 export default function FieldCrewDashboard() {
   const { user } = useAuth();
-  const crewId = user?.crewId || 1; // Default to Crew 1 if mock session
+  const [selectedCrewId, setSelectedCrewId] = useState(user?.crewId || 1);
+  const [availableCrews, setAvailableCrews] = useState([]);
 
   const [crewInfo, setCrewInfo] = useState(null);
   const [complaints, setComplaints] = useState([]);
@@ -59,13 +60,24 @@ export default function FieldCrewDashboard() {
   const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
   const [preventiveModalOpen, setPreventiveModalOpen] = useState(false);
 
+  // Load available crews for switcher
+  useEffect(() => {
+    govService.getCrews({ active_only: true })
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setAvailableCrews(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Fetch crew info, complaints & preventive maintenance orders
   const fetchData = useCallback(async () => {
     try {
       const [crewRes, complaintsRes, prevOrdersRes] = await Promise.all([
-        crewService.getCrewInfo(crewId).catch(() => null),
-        crewService.getAssignedComplaints(crewId).catch(() => []),
-        predictiveService.getCrewPreventiveOrders(crewId).catch(() => []),
+        crewService.getCrewInfo(selectedCrewId).catch(() => null),
+        crewService.getAssignedComplaints(selectedCrewId).catch(() => []),
+        predictiveService.getCrewPreventiveOrders(selectedCrewId).catch(() => []),
       ]);
 
       if (crewRes) setCrewInfo(crewRes);
@@ -77,7 +89,7 @@ export default function FieldCrewDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [crewId]);
+  }, [selectedCrewId]);
 
   useEffect(() => {
     fetchData();
@@ -242,7 +254,26 @@ export default function FieldCrewDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Active Crew Switcher */}
+            {availableCrews.length > 0 && (
+              <div className="flex items-center space-x-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl border border-white/10 backdrop-blur-sm transition-colors">
+                <span className="text-[11px] text-white/70 font-semibold">Viewing:</span>
+                <select
+                  value={selectedCrewId}
+                  onChange={(e) => setSelectedCrewId(Number(e.target.value))}
+                  className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer [&>option]:text-slate-900 [&>option]:bg-white"
+                  aria-label="Select Field Crew Roster"
+                >
+                  {availableCrews.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} (Ward {c.ward_id || 'All'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -257,15 +288,40 @@ export default function FieldCrewDashboard() {
 
       {/* Quick KPI Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-card space-y-1">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Reactive Grievances
-          </span>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setQueueMode('CITIZEN')}
+          onKeyDown={(e) => e.key === 'Enter' && setQueueMode('CITIZEN')}
+          className={`border rounded-2xl p-4 shadow-card space-y-1 cursor-pointer transition-all ${
+            queueMode === 'CITIZEN'
+              ? 'bg-teal-50/50 border-teal-400 ring-2 ring-teal-500/20 shadow-sm'
+              : 'bg-white border-slate-200/90 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Reactive Grievances
+            </span>
+            <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase bg-teal-100 text-teal-800 rounded">
+              Citizen
+            </span>
+          </div>
           <div className="text-2xl font-bold font-mono text-slate-900">{totalReactive}</div>
           <p className="text-[11px] text-slate-400">Citizen complaints assigned</p>
         </div>
 
-        <div className="bg-white border border-purple-200/90 rounded-2xl p-4 shadow-card space-y-1 bg-gradient-to-br from-white to-purple-50/40">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setQueueMode('PREVENTIVE')}
+          onKeyDown={(e) => e.key === 'Enter' && setQueueMode('PREVENTIVE')}
+          className={`border rounded-2xl p-4 shadow-card space-y-1 cursor-pointer transition-all bg-gradient-to-br from-white to-purple-50/40 ${
+            queueMode === 'PREVENTIVE'
+              ? 'border-purple-400 ring-2 ring-purple-500/20 bg-purple-50/70 shadow-sm'
+              : 'border-purple-200/90 hover:border-purple-300'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">
               Preventive Work
@@ -307,9 +363,18 @@ export default function FieldCrewDashboard() {
         >
           <Building2 className="w-4 h-4 text-teal-600" />
           <span>Citizen Grievances</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800 font-mono">
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+              complaints.length > 0 ? 'bg-teal-100 text-teal-800' : 'bg-slate-200 text-slate-600'
+            }`}
+          >
             {complaints.length}
           </span>
+          {complaints.filter((c) => c.current_assignment?.assignment_status === 'ASSIGNED').length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 uppercase animate-pulse">
+              {complaints.filter((c) => c.current_assignment?.assignment_status === 'ASSIGNED').length} new
+            </span>
+          )}
         </button>
 
         <button
@@ -323,16 +388,68 @@ export default function FieldCrewDashboard() {
           <Wrench className="w-4 h-4 text-purple-300" />
           <span>Preventive Maintenance (Predictive AI)</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
               queueMode === 'PREVENTIVE'
                 ? 'bg-purple-800 text-purple-100 border border-purple-700'
-                : 'bg-purple-100 text-purple-800'
+                : preventiveOrders.length > 0
+                ? 'bg-purple-100 text-purple-800'
+                : 'bg-slate-200 text-slate-600'
             }`}
           >
             {preventiveOrders.length}
           </span>
+          {preventiveOrders.filter((o) => o.status === 'ASSIGNED').length > 0 && (
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase animate-pulse ${
+                queueMode === 'PREVENTIVE' ? 'bg-purple-700 text-purple-200' : 'bg-purple-200 text-purple-900'
+              }`}
+            >
+              {preventiveOrders.filter((o) => o.status === 'ASSIGNED').length} new
+            </span>
+          )}
         </button>
       </div>
+
+      {/* Cross-Queue Helper Notification Banners */}
+      {queueMode === 'CITIZEN' && preventiveOrders.length > 0 && (
+        <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-purple-950 shadow-xs">
+          <div className="flex items-center space-x-2.5">
+            <Wrench className="w-4 h-4 text-purple-600 shrink-0" />
+            <span>
+              <strong>Predictive Work Pending:</strong> You have{' '}
+              <span className="font-bold font-mono text-purple-900">{preventiveOrders.length}</span>{' '}
+              proactive infrastructure maintenance order(s) assigned to this crew.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQueueMode('PREVENTIVE')}
+            className="px-3 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            Switch to Preventive Orders →
+          </button>
+        </div>
+      )}
+
+      {queueMode === 'PREVENTIVE' && complaints.length > 0 && (
+        <div className="bg-teal-50/90 border border-teal-200 rounded-2xl p-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-teal-950 shadow-xs">
+          <div className="flex items-center space-x-2.5">
+            <Building2 className="w-4 h-4 text-teal-600 shrink-0" />
+            <span>
+              <strong>Citizen Grievances Active:</strong> You have{' '}
+              <span className="font-bold font-mono text-teal-900">{complaints.length}</span>{' '}
+              reactive grievance ticket(s) assigned to this crew.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQueueMode('CITIZEN')}
+            className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            Switch to Citizen Grievances →
+          </button>
+        </div>
+      )}
 
       {/* =========================================================================
           QUEUE MODE 1: CITIZEN GRIEVANCES (REACTIVE)
@@ -378,8 +495,20 @@ export default function FieldCrewDashboard() {
               <HardHat className="w-10 h-10 text-slate-300 mx-auto" />
               <h3 className="text-sm font-bold text-slate-800">No citizen complaints in this view</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                You currently have no tasks matching this filter. Switch tabs or refresh the queue.
+                {preventiveOrders.length > 0
+                  ? `Your crew has ${preventiveOrders.length} active Preventive Maintenance work order(s) waiting in the Predictive AI queue!`
+                  : 'You currently have no tasks matching this filter. Switch tabs or refresh the queue.'}
               </p>
+              {preventiveOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQueueMode('PREVENTIVE')}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer mt-2"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>View {preventiveOrders.length} Preventive Maintenance Orders →</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -574,8 +703,20 @@ export default function FieldCrewDashboard() {
               <Wrench className="w-10 h-10 text-slate-300 mx-auto" />
               <h3 className="text-sm font-bold text-slate-800">No preventive orders in this view</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No predictive infrastructure work orders match this status filter.
+                {complaints.length > 0
+                  ? `Your crew has ${complaints.length} active Citizen Grievance ticket(s) waiting in the Citizen queue!`
+                  : 'No predictive infrastructure work orders match this status filter.'}
               </p>
+              {complaints.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQueueMode('CITIZEN')}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer mt-2"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>View {complaints.length} Citizen Grievances →</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -236,7 +236,7 @@ export default function PriorityTable({
                 processedComplaints.map((c, idx) => {
                   const assignedCrew = c.current_assignment?.crew || (c.assigned_crew_name ? { name: c.assigned_crew_name } : null);
                   const isResolved = c.status === 'RESOLVED';
-                  const isAssigned = !!assignedCrew || c.status === 'INVESTIGATING' || c.status === 'IN_PROGRESS';
+                  const isAssigned = !!assignedCrew;
                   const sla = c.sla_metrics;
 
                   return (
@@ -356,16 +356,20 @@ export default function PriorityTable({
                       </td>
 
                       <td className="py-3.5 px-3 text-right space-x-1.5 whitespace-nowrap">
-                        {!isResolved && !isAssigned && (
+                        {!isResolved && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (onOpenAssignModal) onOpenAssignModal(c);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer"
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer ${
+                              assignedCrew
+                                ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                : 'bg-teal-700 hover:bg-teal-800 text-white'
+                            }`}
                           >
-                            Assign Crew
+                            {assignedCrew ? 'Reassign' : 'Assign Crew'}
                           </button>
                         )}
                         <button

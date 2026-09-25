@@ -71,25 +71,32 @@ export default function CrewAssignmentModal({ complaint, isOpen, onClose, onSucc
         setDepartments(deptRes || []);
         setCrews(crewRes || []);
 
-        // Auto-recommend department based on complaint category
-        const catCode = complaint.category?.code?.toUpperCase() || '';
-        const recDeptName = CATEGORY_DEPT_MAP[catCode];
-        const matchDept = deptRes.find((d) => d.name === recDeptName);
+        // If already assigned, pre-select current department & crew
+        const currentCrew = complaint.current_assignment?.crew;
+        if (currentCrew) {
+          setSelectedDeptId(String(currentCrew.department_id));
+          setSelectedCrewId(String(currentCrew.id));
+        } else {
+          // Auto-recommend department based on complaint category
+          const catCode = complaint.category?.code?.toUpperCase() || complaint.category_code?.toUpperCase() || '';
+          const recDeptName = CATEGORY_DEPT_MAP[catCode];
+          const matchDept = deptRes.find((d) => d.name === recDeptName);
 
-        if (matchDept) {
-          setSelectedDeptId(String(matchDept.id));
-          // Pre-select crew in same ward if available
-          const wardCrew = crewRes.find(
-            (c) => c.department_id === matchDept.id && c.ward_id === complaint.ward_id
-          );
-          if (wardCrew) {
-            setSelectedCrewId(String(wardCrew.id));
-          } else {
-            const firstDeptCrew = crewRes.find((c) => c.department_id === matchDept.id);
-            if (firstDeptCrew) setSelectedCrewId(String(firstDeptCrew.id));
+          if (matchDept) {
+            setSelectedDeptId(String(matchDept.id));
+            // Pre-select crew in same ward if available
+            const wardCrew = crewRes.find(
+              (c) => c.department_id === matchDept.id && c.ward_id === complaint.ward_id
+            );
+            if (wardCrew) {
+              setSelectedCrewId(String(wardCrew.id));
+            } else {
+              const firstDeptCrew = crewRes.find((c) => c.department_id === matchDept.id);
+              if (firstDeptCrew) setSelectedCrewId(String(firstDeptCrew.id));
+            }
+          } else if (deptRes.length > 0) {
+            setSelectedDeptId(String(deptRes[0].id));
           }
-        } else if (deptRes.length > 0) {
-          setSelectedDeptId(String(deptRes[0].id));
         }
       })
       .catch((err) => {
@@ -187,7 +194,7 @@ export default function CrewAssignmentModal({ complaint, isOpen, onClose, onSucc
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-800 flex items-center space-x-1.5">
               <Building2 className="w-3.5 h-3.5 text-teal-700" />
-              <span>{complaint.category?.name || 'Civic Issue'}</span>
+              <span>{complaint.category?.name || complaint.category || 'Civic Issue'}</span>
             </span>
             <SeverityBadge level={complaint.severity_level} score={complaint.severity_score} />
           </div>
@@ -201,6 +208,12 @@ export default function CrewAssignmentModal({ complaint, isOpen, onClose, onSucc
               <MapPin className="w-3.5 h-3.5 text-teal-700" />
               <span>{complaint.ward_name || `Ward ${complaint.ward_id || 'Zone'}`}</span>
             </div>
+            {complaint.current_assignment?.crew && (
+              <div className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                <HardHat className="w-3 h-3 text-indigo-600" />
+                <span>Current: {complaint.current_assignment.crew.name}</span>
+              </div>
+            )}
             <div className="font-mono text-teal-800 font-bold">
               IPS Priority: {complaint.priority_score?.toFixed(1)} / 100
             </div>

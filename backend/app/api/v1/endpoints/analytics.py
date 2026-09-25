@@ -9,6 +9,8 @@ from app.schemas.hotspot import HotspotClusterResponse
 from app.services.hotspot_service import hotspot_service
 from app.ai.clustering.spatial_cluster import spatial_cluster_engine
 from app.ai.trends.trend_analyzer import trend_analyzer
+from app.schemas.crew_assignment import CrewAssignmentResponse
+from app.services.dispatch_service import dispatch_service
 
 router = APIRouter()
 
@@ -106,10 +108,30 @@ def get_priority_ranking(
         .all()
     )
 
-    ranked_complaints = [
-        {
+    ranked_complaints = []
+    for c in top_complaints:
+        current_assignment = None
+        assigned_crew_name = None
+        crew_assignments_data = []
+
+        if c.crew_assignments:
+            latest_assignment = c.crew_assignments[0]
+            current_assignment = CrewAssignmentResponse.model_validate(latest_assignment).model_dump(mode="json")
+            if latest_assignment.crew:
+                assigned_crew_name = latest_assignment.crew.name
+
+            for a in c.crew_assignments:
+                crew_assignments_data.append(
+                    CrewAssignmentResponse.model_validate(a).model_dump(mode="json")
+                )
+
+        sla = dispatch_service.calculate_sla(c).model_dump(mode="json")
+        sla["status"] = sla.get("sla_status")
+
+        ranked_complaints.append({
             "id": c.id,
             "tracking_id": c.tracking_id,
+            "source_channel": c.source_channel or "WEB",
             "category": c.category.name if c.category else "Civic",
             "category_code": c.category.code if c.category else "CIVIC",
             "subcategory": c.subcategory or "General",
@@ -121,11 +143,15 @@ def get_priority_ranking(
             "latitude": c.latitude,
             "longitude": c.longitude,
             "address": c.address,
+            "ward_id": c.ward_id,
+            "ward_name": c.ward_name,
             "cluster_id": c.cluster_id,
-            "created_at": c.created_at
-        }
-        for c in top_complaints
-    ]
+            "created_at": c.created_at,
+            "current_assignment": current_assignment,
+            "assigned_crew_name": assigned_crew_name,
+            "crew_assignments": crew_assignments_data,
+            "sla_metrics": sla,
+        })
 
     ranked_hotspots = [
         {

@@ -115,6 +115,18 @@ class DispatchService:
                 detail=f"Field crew '{crew.name}' is currently inactive and cannot receive new assignments."
             )
 
+        # Mark prior active assignments as REASSIGNED to ensure crew queue isolation
+        existing_active_assignments = (
+            db.query(CrewAssignment)
+            .filter(
+                CrewAssignment.complaint_id == complaint.id,
+                CrewAssignment.assignment_status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"])
+            )
+            .all()
+        )
+        for prev_assignment in existing_active_assignments:
+            prev_assignment.assignment_status = "REASSIGNED"
+
         # Create assignment
         assignment = CrewAssignment(
             complaint_id=complaint.id,
