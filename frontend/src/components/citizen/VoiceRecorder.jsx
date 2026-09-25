@@ -2,11 +2,49 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
+export function processSpeechResults(results, lastProcessedIndex = 0) {
+  let newFinalTranscript = '';
+  let currentInterim = '';
+  let updatedIndex = lastProcessedIndex;
+
+  for (let i = lastProcessedIndex; i < results.length; i++) {
+    const result = results[i];
+    const text = result[0]?.transcript || '';
+
+    if (result.isFinal) {
+      const trimmed = text.trim();
+      if (trimmed) {
+        newFinalTranscript = newFinalTranscript
+          ? `${newFinalTranscript} ${trimmed}`
+          : trimmed;
+      }
+      updatedIndex = i + 1;
+    } else {
+      const trimmed = text.trim();
+      if (trimmed) {
+        currentInterim = currentInterim ? `${currentInterim} ${trimmed}` : trimmed;
+      }
+    }
+  }
+
+  return {
+    newFinalTranscript,
+    updatedIndex,
+    currentInterim,
+  };
+}
+
 export default function VoiceRecorder({ onTranscriptReceived, isProcessing = false }) {
   const { currentLang, t } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState(null);
+
   const recognitionRef = useRef(null);
+  const isRecordingRef = useRef(false);
+  const isStartingRef = useRef(false);
+  const lastProcessedIndexRef = useRef(0);
+  const unfinalizedInterimRef = useRef('');
+  const onTranscriptReceivedRef = useRef(onTranscriptReceived);
 
   const langCodeMap = {
     en: 'en-US',
@@ -16,37 +54,37 @@ export default function VoiceRecorder({ onTranscriptReceived, isProcessing = fal
   };
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = langCodeMap[currentLang] || 'en-US';
+    onTranscriptReceivedRef.current = onTranscriptReceived;
+  }, [onTranscriptReceived]);
 
-      recognition.onresult = (event) => {
-        let currentTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
-        }
-        if (currentTranscript.trim()) {
-          onTranscriptReceived(currentTranscript.trim());
-        }
-      };
-
-      recognition.onerror = (event) => {
-        if (event.error !== 'no-speech') {
-          setError(`Voice input error: ${event.error}`);
-        }
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recognition;
+  useEffect(() => {
+    if (recognitionRef.current && isRecordingRef.current) {
+      try {
+        recognitionRef.current.lang = langCodeMap[currentLang] || 'en-US';
+      } catch (err) {
+        // ignore dynamic lang switch error if engine does not permit mid-session change
+      }
     }
-  }, [currentLang, onTranscriptReceived]);
+  }, [currentLang]);
+
+  useEffect(() => {
+    return () => {
+      isRecordingRef.current = false;
+      isStartingRef.current = false;
+      if (recognitionRef.current) {
+        const rec = recognitionRef.current;
+        recognitionRef.current = null;
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        try {
+          rec.abort();
+        } catch (err) {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   const toggleRecording = () => {
     setError(null);
@@ -57,20 +95,96 @@ export default function VoiceRecorder({ onTranscriptReceived, isProcessing = fal
       return;
     }
 
-    if (isRecording) {
-      recognitionRef.current?.stop();
+    // Prevent multiple instances/listeners from repeated rapid clicks
+    if (isStartingRef.current) {
+      return;
+    }
+
+    if (isRecordingRef.current) {
+      // User requested stop
+      isRecordingRef.current = false;
       setIsRecording(false);
-    } else {
-      try {
-        if (recognitionRef.current) {
-          recognitionRef.current.lang = langCodeMap[currentLang] || 'en-US';
-          recognitionRef.current.start();
-          setIsRecording(true);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (err) {
+          // ignore
         }
-      } catch (err) {
-        setError("Could not start microphone. Please check permissions.");
-        setIsRecording(false);
       }
+      return;
+    }
+
+    // Clean up any previous recognition instance before creating a new one
+    if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
+      try {
+        rec.abort();
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    try {
+      isStartingRef.current = true;
+      lastProcessedIndexRef.current = 0;
+      unfinalizedInterimRef.current = '';
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = langCodeMap[currentLang] || 'en-US';
+
+      recognition.onresult = (event) => {
+        const { newFinalTranscript, updatedIndex, currentInterim } = processSpeechResults(
+          event.results,
+          lastProcessedIndexRef.current
+        );
+
+        lastProcessedIndexRef.current = updatedIndex;
+        unfinalizedInterimRef.current = currentInterim;
+
+        if (newFinalTranscript) {
+          unfinalizedInterimRef.current = '';
+          onTranscriptReceivedRef.current?.(newFinalTranscript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setError(`Voice input error: ${event.error}`);
+        }
+        isRecordingRef.current = false;
+        isStartingRef.current = false;
+        setIsRecording(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onend = () => {
+        if (unfinalizedInterimRef.current) {
+          onTranscriptReceivedRef.current?.(unfinalizedInterimRef.current);
+          unfinalizedInterimRef.current = '';
+        }
+        isRecordingRef.current = false;
+        isStartingRef.current = false;
+        setIsRecording(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      recognition.start();
+      isStartingRef.current = false;
+    } catch (err) {
+      isRecordingRef.current = false;
+      isStartingRef.current = false;
+      setIsRecording(false);
+      recognitionRef.current = null;
+      setError("Could not start microphone. Please check permissions.");
     }
   };
 
