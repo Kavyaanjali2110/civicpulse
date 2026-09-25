@@ -121,6 +121,7 @@ export default function InteractiveMap({
   reclustering = false,
   onSelectComplaint,
   onSelectAsset,
+  isSplitView = false,
 }) {
   // Layer visibility state
   const [showHotspots, setShowHotspots] = useState(true);
@@ -204,7 +205,7 @@ export default function InteractiveMap({
   }, [heatmapPoints, selectedCatId, categories]);
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-card space-y-4">
+    <div className={`bg-white border border-slate-200/90 rounded-2xl shadow-card space-y-4 ${isSplitView ? 'p-4 sm:p-5' : 'p-6'}`}>
       {/* Map Control Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
@@ -237,52 +238,57 @@ export default function InteractiveMap({
             </select>
           </div>
 
-          {/* Layer Checkboxes */}
-          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-[11px] text-slate-600">
+          {/* Layer Toggle Pills - compact */}
+          <div className="flex items-center flex-wrap gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-[10px] text-slate-600">
             <button
               type="button"
               onClick={() => setShowHotspots(!showHotspots)}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 showHotspots ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-slate-400 hover:text-slate-700'
               }`}
+              title="Toggle Hotspots Layer"
             >
-              🔥 Hotspots ({validHotspots.length})
+              🔥 <span className="hidden sm:inline">Hotspots </span>({validHotspots.length})
             </button>
             <button
               type="button"
               onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 showHeatmap ? 'bg-rose-100 text-rose-900 border border-rose-300' : 'text-slate-400 hover:text-slate-700'
               }`}
+              title="Toggle Heat Density Layer"
             >
-              ⚡ Heat Density ({filteredHeatmap.length})
+              ⚡ <span className="hidden sm:inline">Heat </span>({filteredHeatmap.length})
             </button>
             <button
               type="button"
               onClick={() => setShowAssets(!showAssets)}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 showAssets ? 'bg-blue-100 text-blue-900 border border-blue-300' : 'text-slate-400 hover:text-slate-700'
               }`}
+              title="Toggle Public POIs Layer"
             >
-              🏥 Public POIs ({validAssets.length})
+              🏥 <span className="hidden sm:inline">POIs </span>({validAssets.length})
             </button>
             <button
               type="button"
               onClick={() => setShowPins(!showPins)}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 showPins ? 'bg-teal-100 text-teal-900 border border-teal-300' : 'text-slate-400 hover:text-slate-700'
               }`}
+              title="Toggle Complaint Pins Layer"
             >
-              📍 Pins ({filteredComplaints.length})
+              📍 <span className="hidden sm:inline">Pins </span>({filteredComplaints.length})
             </button>
             <button
               type="button"
               onClick={() => setShowPredictiveRisk(!showPredictiveRisk)}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 showPredictiveRisk ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'text-slate-400 hover:text-slate-700'
               }`}
+              title="Toggle Predictive Risk Layer"
             >
-              ⚠️ Predictive Risk ({validPredictiveRisk.length})
+              ⚠️ <span className="hidden sm:inline">Risk </span>({validPredictiveRisk.length})
             </button>
           </div>
 
@@ -300,7 +306,7 @@ export default function InteractiveMap({
       </div>
 
       {/* Leaflet Map Canvas */}
-      <div className="h-[460px] w-full rounded-2xl overflow-hidden border border-slate-200 relative shadow-sm">
+      <div className={`${isSplitView ? 'h-[520px]' : 'h-[560px]'} w-full rounded-2xl overflow-hidden border border-slate-200 relative shadow-sm`}>
         <MapContainer
           center={mapCenter}
           zoom={13}

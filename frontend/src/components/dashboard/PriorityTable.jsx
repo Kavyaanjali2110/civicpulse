@@ -31,6 +31,7 @@ export default function PriorityTable({
   selectedFilterSeverity = 'ALL',
   selectedFilterCategory = 'ALL',
   onFilterChange,
+  isSplitView = false,
 }) {
   const [activeTab, setActiveTab] = useState('complaints');
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,7 +148,7 @@ export default function PriorityTable({
   }, [rankedComplaints, searchQuery, statusFilter, severityFilter, categoryFilter, sortField, sortAsc]);
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-card space-y-4">
+    <div className={`bg-white border border-slate-200/90 rounded-2xl shadow-card space-y-4 ${isSplitView ? 'p-4 sm:p-5' : 'p-6'}`}>
       {/* Header & Tabs */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
