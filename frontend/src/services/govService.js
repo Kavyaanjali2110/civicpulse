@@ -119,8 +119,12 @@ export const govService = {
     return response.data;
   },
 
-  getPriorityRankings: async (limit = 15) => {
-    const response = await apiClient.get('/gov/priority-ranking', { params: { limit } });
+  getPriorityRankings: async (limit = 15, status = null) => {
+    const params = { limit };
+    if (status) {
+      params.status = status;
+    }
+    const response = await apiClient.get('/gov/priority-ranking', { params });
     return response.data;
   },
 

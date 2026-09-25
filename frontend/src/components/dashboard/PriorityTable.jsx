@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Flame, 
   Layers, 
@@ -27,7 +27,7 @@ export default function PriorityTable({
   onSelectComplaint,
   onOpenStatusModal,
   onOpenAssignModal,
-  selectedFilterStatus = 'ALL',
+  selectedFilterStatus = 'ACTIVE',
   selectedFilterSeverity = 'ALL',
   selectedFilterCategory = 'ALL',
   onFilterChange,
@@ -36,9 +36,27 @@ export default function PriorityTable({
   const [searchQuery, setSearchQuery] = useState('');
   
   // Local or controlled filter states
-  const [statusFilter, setStatusFilter] = useState(selectedFilterStatus);
-  const [severityFilter, setSeverityFilter] = useState(selectedFilterSeverity);
-  const [categoryFilter, setCategoryFilter] = useState(selectedFilterCategory);
+  const [statusFilter, setStatusFilter] = useState(selectedFilterStatus || 'ACTIVE');
+  const [severityFilter, setSeverityFilter] = useState(selectedFilterSeverity || 'ALL');
+  const [categoryFilter, setCategoryFilter] = useState(selectedFilterCategory || 'ALL');
+
+  useEffect(() => {
+    if (selectedFilterStatus !== undefined) {
+      setStatusFilter(selectedFilterStatus);
+    }
+  }, [selectedFilterStatus]);
+
+  useEffect(() => {
+    if (selectedFilterSeverity !== undefined) {
+      setSeverityFilter(selectedFilterSeverity);
+    }
+  }, [selectedFilterSeverity]);
+
+  useEffect(() => {
+    if (selectedFilterCategory !== undefined) {
+      setCategoryFilter(selectedFilterCategory);
+    }
+  }, [selectedFilterCategory]);
 
   // Sorting
   const [sortField, setSortField] = useState('priority_score'); // 'priority_score' | 'tracking_id' | 'severity_score'
@@ -53,17 +71,39 @@ export default function PriorityTable({
     }
   };
 
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    if (onFilterChange) {
+      onFilterChange({
+        status: newStatus,
+        severity: severityFilter,
+        category: categoryFilter,
+      });
+    }
+  };
+
+  const handleSeverityFilterChange = (newSeverity) => {
+    setSeverityFilter(newSeverity);
+    if (onFilterChange) {
+      onFilterChange({
+        status: statusFilter,
+        severity: newSeverity,
+        category: categoryFilter,
+      });
+    }
+  };
+
   const handleResetFilters = () => {
     setSearchQuery('');
-    setStatusFilter('ALL');
+    setStatusFilter('ACTIVE');
     setSeverityFilter('ALL');
     setCategoryFilter('ALL');
-    if (onFilterChange) onFilterChange({ status: 'ALL', severity: 'ALL', category: 'ALL' });
+    if (onFilterChange) onFilterChange({ status: 'ACTIVE', severity: 'ALL', category: 'ALL' });
   };
 
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
-    statusFilter !== 'ALL' ||
+    statusFilter !== 'ACTIVE' ||
     severityFilter !== 'ALL' ||
     categoryFilter !== 'ALL';
 
@@ -80,7 +120,13 @@ export default function PriorityTable({
           (c.address && c.address.toLowerCase().includes(query)) ||
           (c.assigned_crew_name && c.assigned_crew_name.toLowerCase().includes(query));
 
-        const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
+        const matchesStatus =
+          statusFilter === 'ALL'
+            ? true
+            : statusFilter === 'ACTIVE'
+            ? c.status !== 'RESOLVED'
+            : c.status === statusFilter;
+
         const matchesSeverity = severityFilter === 'ALL' || c.severity_level === severityFilter;
         const matchesCategory =
           categoryFilter === 'ALL' ||
@@ -150,20 +196,21 @@ export default function PriorityTable({
             {/* Status Filter */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => handleStatusFilterChange(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-medium focus:outline-none cursor-pointer"
             >
-              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active Complaints</option>
               <option value="RECEIVED">Received</option>
               <option value="INVESTIGATING">Investigating</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="RESOLVED">Resolved</option>
+              <option value="ALL">All (Inc. Resolved)</option>
             </select>
 
             {/* Severity Filter */}
             <select
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              onChange={(e) => handleSeverityFilterChange(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">All Severities</option>

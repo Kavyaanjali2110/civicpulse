@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building2, 
@@ -40,6 +40,7 @@ import { useAuth } from '../context/AuthContext';
 import { govService } from '../services/govService';
 import { citizenService } from '../services/citizenService';
 import { predictiveService } from '../services/predictiveService';
+import { subscribeToResolutions } from '../utils/syncChannel';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export default function GovernmentDashboard() {
@@ -62,9 +63,15 @@ export default function GovernmentDashboard() {
   const [selectedPredictionWindow, setSelectedPredictionWindow] = useState(30);
 
   // Filter propagation states for PriorityTable
-  const [priorityFilterStatus, setPriorityFilterStatus] = useState('ALL');
+  const [priorityFilterStatus, setPriorityFilterStatus] = useState('ACTIVE');
   const [priorityFilterSeverity, setPriorityFilterSeverity] = useState('ALL');
   const [priorityFilterCategory, setPriorityFilterCategory] = useState('ALL');
+
+  // Ref tracking current filter status so polling interval does not recreate on filter changes
+  const priorityFilterStatusRef = useRef(priorityFilterStatus);
+  useEffect(() => {
+    priorityFilterStatusRef.current = priorityFilterStatus;
+  }, [priorityFilterStatus]);
 
   // Data States
   const [stats, setStats] = useState(null);
@@ -83,54 +90,74 @@ export default function GovernmentDashboard() {
   const [selectedComplaintForAssign, setSelectedComplaintForAssign] = useState(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
-  const fetchDashboardData = useCallback(async (isRefresh = false) => {
+  const fetchDashboardData = useCallback(async (isRefresh = false, overrideStatus = null) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const [
-        statsRes,
-        workflowRes,
-        hotspotsRes,
-        assetsRes,
-        heatmapRes,
-        priorityRes,
-        trendsRes,
-        recsRes,
-        catsRes,
-        riskRes,
-        wardRisksRes,
-        predRecsRes,
-        ordersRes,
-      ] = await Promise.all([
-        govService.getOverviewStats(),
-        govService.getWorkflowStats().catch(() => null),
-        govService.getHotspots(),
-        govService.getInfrastructureAssets(),
-        govService.getHeatmapPoints(),
-        govService.getPriorityRankings(30),
-        govService.getTrends(),
-        govService.getAIRecommendations(),
-        citizenService.getCategories(),
-        predictiveService.getAssetsRisk({ prediction_window: selectedPredictionWindow }).catch(() => []),
-        predictiveService.getWardRisks().catch(() => []),
-        predictiveService.getPredictiveRecommendations().catch(() => []),
-        predictiveService.getPreventiveOrders().catch(() => []),
-      ]);
+      const currentStatus = overrideStatus || priorityFilterStatusRef.current || 'ACTIVE';
+      const apiStatus = currentStatus === 'RESOLVED' ? 'RESOLVED' : (currentStatus === 'ALL' ? 'ALL' : 'ACTIVE');
 
-      setStats(statsRes);
-      setWorkflowStats(workflowRes);
-      setHotspots(hotspotsRes);
-      setInfrastructureAssets(assetsRes);
-      setHeatmapPoints(heatmapRes);
-      setPriorityData(priorityRes);
-      setTrendsData(trendsRes);
-      setRecommendationsData(recsRes);
-      setCategories(catsRes);
-      setPredictiveAssetsRisk(riskRes || []);
-      setWardRisks(wardRisksRes || []);
-      setPredictiveRecs(predRecsRes || []);
-      setPreventiveOrders(ordersRes || []);
+      if (isRefresh) {
+        // Lightweight synchronization poll every 10s or upon cross-tab broadcast:
+        // Refetches overview stats, workflow SLA stats, hotspots, and status-filtered priority ranking
+        const [statsRes, workflowRes, hotspotsRes, priorityRes] = await Promise.all([
+          govService.getOverviewStats(),
+          govService.getWorkflowStats().catch(() => null),
+          govService.getHotspots().catch(() => null),
+          govService.getPriorityRankings(30, apiStatus),
+        ]);
+
+        setStats(statsRes);
+        if (workflowRes) setWorkflowStats(workflowRes);
+        if (hotspotsRes) setHotspots(hotspotsRes);
+        setPriorityData(priorityRes);
+      } else {
+        // Full initial load
+        const [
+          statsRes,
+          workflowRes,
+          hotspotsRes,
+          assetsRes,
+          heatmapRes,
+          priorityRes,
+          trendsRes,
+          recsRes,
+          catsRes,
+          riskRes,
+          wardRisksRes,
+          predRecsRes,
+          ordersRes,
+        ] = await Promise.all([
+          govService.getOverviewStats(),
+          govService.getWorkflowStats().catch(() => null),
+          govService.getHotspots(),
+          govService.getInfrastructureAssets(),
+          govService.getHeatmapPoints(),
+          govService.getPriorityRankings(30, apiStatus),
+          govService.getTrends(),
+          govService.getAIRecommendations(),
+          citizenService.getCategories(),
+          predictiveService.getAssetsRisk({ prediction_window: selectedPredictionWindow }).catch(() => []),
+          predictiveService.getWardRisks().catch(() => []),
+          predictiveService.getPredictiveRecommendations().catch(() => []),
+          predictiveService.getPreventiveOrders().catch(() => []),
+        ]);
+
+        setStats(statsRes);
+        setWorkflowStats(workflowRes);
+        setHotspots(hotspotsRes);
+        setInfrastructureAssets(assetsRes);
+        setHeatmapPoints(heatmapRes);
+        setPriorityData(priorityRes);
+        setTrendsData(trendsRes);
+        setRecommendationsData(recsRes);
+        setCategories(catsRes);
+        setPredictiveAssetsRisk(riskRes || []);
+        setWardRisks(wardRisksRes || []);
+        setPredictiveRecs(predRecsRes || []);
+        setPreventiveOrders(ordersRes || []);
+      }
     } catch (err) {
       console.error("Dashboard fetch failed", err);
     } finally {
@@ -141,8 +168,20 @@ export default function GovernmentDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(() => fetchDashboardData(true), 45000);
-    return () => clearInterval(interval);
+    // 10-second automatic server synchronization poll
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 10000);
+
+    // Cross-tab broadcast listener for immediate same-browser refresh upon crew resolution
+    const unsubscribe = subscribeToResolutions(() => {
+      fetchDashboardData(true);
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, [fetchDashboardData]);
 
   const handleLogout = () => {
@@ -181,23 +220,61 @@ export default function GovernmentDashboard() {
     }
   };
 
+  const handlePriorityFilterChange = useCallback(async (f) => {
+    const prevStatus = priorityFilterStatusRef.current;
+    setPriorityFilterStatus(f.status);
+    setPriorityFilterSeverity(f.severity);
+    setPriorityFilterCategory(f.category);
+
+    const prevApiStatus = prevStatus === 'RESOLVED' ? 'RESOLVED' : (prevStatus === 'ALL' ? 'ALL' : 'ACTIVE');
+    const newApiStatus = f.status === 'RESOLVED' ? 'RESOLVED' : (f.status === 'ALL' ? 'ALL' : 'ACTIVE');
+
+    if (prevApiStatus !== newApiStatus) {
+      try {
+        const priorityRes = await govService.getPriorityRankings(30, newApiStatus);
+        setPriorityData(priorityRes);
+      } catch (err) {
+        console.error("Failed to fetch filtered priority rankings", err);
+      }
+    }
+  }, []);
+
   // KPI Card Click Shortcuts
-  const handleKpiCardClick = (cardId) => {
+  const handleKpiCardClick = async (cardId) => {
     if (cardId === 'total') {
       setPriorityFilterStatus('ALL');
       setPriorityFilterSeverity('ALL');
       setPriorityFilterCategory('ALL');
       scrollToSection('sec-priority', 'queue');
+      try {
+        const priorityRes = await govService.getPriorityRankings(30, 'ALL');
+        setPriorityData(priorityRes);
+      } catch (err) {
+        console.error("Failed to fetch all priority rankings", err);
+      }
     } else if (cardId === 'hotspots') {
       scrollToSection('sec-map', 'hotspots');
     } else if (cardId === 'critical') {
       setPriorityFilterSeverity('CRITICAL');
       scrollToSection('sec-priority', 'queue');
     } else if (cardId === 'priority') {
+      setPriorityFilterStatus('ACTIVE');
       scrollToSection('sec-priority', 'queue');
+      try {
+        const priorityRes = await govService.getPriorityRankings(30, 'ACTIVE');
+        setPriorityData(priorityRes);
+      } catch (err) {
+        console.error("Failed to fetch active priority rankings", err);
+      }
     } else if (cardId === 'resolved') {
       setPriorityFilterStatus('RESOLVED');
       scrollToSection('sec-priority', 'queue');
+      try {
+        const priorityRes = await govService.getPriorityRankings(30, 'RESOLVED');
+        setPriorityData(priorityRes);
+      } catch (err) {
+        console.error("Failed to fetch resolved priority rankings", err);
+      }
     }
   };
 
@@ -491,11 +568,7 @@ export default function GovernmentDashboard() {
             selectedFilterStatus={priorityFilterStatus}
             selectedFilterSeverity={priorityFilterSeverity}
             selectedFilterCategory={priorityFilterCategory}
-            onFilterChange={(f) => {
-              setPriorityFilterStatus(f.status);
-              setPriorityFilterSeverity(f.severity);
-              setPriorityFilterCategory(f.category);
-            }}
+            onFilterChange={handlePriorityFilterChange}
           />
         </div>
 

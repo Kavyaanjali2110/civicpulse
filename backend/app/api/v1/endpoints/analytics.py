@@ -86,18 +86,28 @@ def trigger_recluster(
 
 @router.get("/priority-ranking", summary="Infrastructure Priority Ranking")
 def get_priority_ranking(
-    limit: int = Query(15, ge=1, le=50),
+    limit: int = Query(15, ge=1, le=100),
+    status: Optional[str] = Query(None, description="Filter complaints by status (ACTIVE, RESOLVED, ALL, or specific status)"),
     db: Session = Depends(get_db)
 ):
     """Returns top ranked municipal issues and hotspots sorted by Infrastructure Priority Score (IPS)."""
-    # 1. Top individual critical complaints
-    top_complaints = (
-        db.query(Complaint)
-        .filter(Complaint.status != "RESOLVED")
-        .order_by(Complaint.priority_score.desc())
-        .limit(limit)
-        .all()
-    )
+    # 1. Top individual complaints filtered by status
+    query = db.query(Complaint)
+    status_filter = (status or "ACTIVE").upper()
+
+    if status_filter == "RESOLVED":
+        query = query.filter(Complaint.status == "RESOLVED").order_by(
+            Complaint.resolved_at.desc(),
+            Complaint.priority_score.desc()
+        )
+    elif status_filter == "ALL":
+        query = query.order_by(Complaint.priority_score.desc())
+    elif status_filter == "ACTIVE":
+        query = query.filter(Complaint.status != "RESOLVED").order_by(Complaint.priority_score.desc())
+    else:
+        query = query.filter(Complaint.status == status_filter).order_by(Complaint.priority_score.desc())
+
+    top_complaints = query.limit(limit).all()
 
     # 2. Top active hotspot clusters
     top_hotspots = (
@@ -125,6 +135,19 @@ def get_priority_ranking(
                     CrewAssignmentResponse.model_validate(a).model_dump(mode="json")
                 )
 
+        evidence_data = []
+        if c.resolution_evidences:
+            for ev in c.resolution_evidences:
+                evidence_data.append({
+                    "id": ev.id,
+                    "complaint_id": ev.complaint_id,
+                    "before_photo": ev.before_photo,
+                    "after_photo": ev.after_photo,
+                    "description": ev.description,
+                    "uploaded_by": ev.uploaded_by,
+                    "uploaded_at": ev.uploaded_at,
+                })
+
         sla = dispatch_service.calculate_sla(c).model_dump(mode="json")
         sla["status"] = sla.get("sla_status")
 
@@ -147,9 +170,11 @@ def get_priority_ranking(
             "ward_name": c.ward_name,
             "cluster_id": c.cluster_id,
             "created_at": c.created_at,
+            "resolved_at": c.resolved_at,
             "current_assignment": current_assignment,
             "assigned_crew_name": assigned_crew_name,
             "crew_assignments": crew_assignments_data,
+            "resolution_evidences": evidence_data,
             "sla_metrics": sla,
         })
 

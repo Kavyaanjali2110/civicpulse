@@ -12,6 +12,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { crewService } from '../../services/crewService';
+import { broadcastResolution } from '../../utils/syncChannel';
 
 // Preset high quality civic repair images for rapid demo verification
 const DEMO_PRESETS = [
@@ -113,6 +114,13 @@ export default function ResolutionUploadModal({
       await crewService.completeAssignment(assignment.id, {
         changed_by: officerName.trim() || 'Field Crew Officer',
         notes: `Work completed on-site. Proof submitted: ${description.trim().slice(0, 80)}...`,
+      });
+
+      // Broadcast resolution event to any open Government Dashboard tabs in the browser
+      broadcastResolution({
+        complaintId: complaint.id,
+        trackingId: complaint.tracking_id,
+        assignmentId: assignment.id,
       });
 
       if (onSuccess) onSuccess();

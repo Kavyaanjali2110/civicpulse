@@ -377,3 +377,106 @@ def test_priority_ranking_assignment_fields_and_crew_filtering():
     # Crew 1 NO LONGER sees it
     crew_1_updated = client.get("/api/v1/gov/crews/1/assigned-complaints").json()
     assert not any(c["id"] == cid for c in crew_1_updated)
+
+
+def test_priority_ranking_status_filtering_and_resolution_sync():
+    """
+    Verify status-aware priority-ranking API and resolution synchronization:
+    1. Active priority ranking excludes resolved complaints.
+    2. Crew resolution workflow sets complaint status to RESOLVED, saves proof, creates audit log.
+    3. Active priority queue immediately drops the resolved complaint.
+    4. Resolved priority queue returns the complaint with resolution proof and timestamp.
+    5. Overview statistics reflect the resolution.
+    6. Citizen notification is created.
+    """
+    # 1. Verify default priority ranking returns only active complaints
+    res_active = client.get("/api/v1/gov/priority-ranking?limit=30&status=ACTIVE")
+    assert res_active.status_code == 200
+    active_complaints = res_active.json()["ranked_complaints"]
+    for c in active_complaints:
+        assert c["status"] != "RESOLVED"
+
+    # 2. Pick the first complaint from the active list
+    target = active_complaints[0]
+    cid = target["id"]
+
+    # Assign to Crew 1
+    assign_res = client.post(
+        f"/api/v1/gov/complaints/{cid}/assign",
+        json={"crew_id": 1, "assigned_by": "Gov Dispatch Officer", "notes": "Dispatched for urgent resolution"}
+    )
+    assert assign_res.status_code == 201
+    assignment_id = assign_res.json()["id"]
+
+    # Crew 1 accepts
+    accept_res = client.post(
+        f"/api/v1/gov/assignments/{assignment_id}/accept",
+        json={"changed_by": "Crew Lead Vikram"}
+    )
+    assert accept_res.status_code == 200
+    assert accept_res.json()["assignment_status"] == "ACCEPTED"
+
+    # Crew 1 starts
+    start_res = client.post(
+        f"/api/v1/gov/assignments/{assignment_id}/start",
+        json={"changed_by": "Crew Lead Vikram"}
+    )
+    assert start_res.status_code == 200
+    assert start_res.json()["assignment_status"] == "IN_PROGRESS"
+
+    # Crew 1 uploads resolution proof
+    proof_res = client.post(
+        f"/api/v1/gov/complaints/{cid}/resolution-evidence",
+        json={
+            "before_photo": "https://images.unsplash.com/photo-before",
+            "after_photo": "https://images.unsplash.com/photo-after-repaired",
+            "description": "Repaired underground collar and pressure tested.",
+            "uploaded_by": "Crew Lead Vikram"
+        }
+    )
+    assert proof_res.status_code == 201
+    assert proof_res.json()["after_photo"] == "https://images.unsplash.com/photo-after-repaired"
+
+    # Crew 1 completes assignment -> marks complaint RESOLVED
+    complete_res = client.post(
+        f"/api/v1/gov/assignments/{assignment_id}/complete",
+        json={"changed_by": "Crew Lead Vikram", "notes": "Work completed and verified on-site."}
+    )
+    assert complete_res.status_code == 200
+    assert complete_res.json()["assignment_status"] == "COMPLETED"
+
+    # 3. Verify backend complaint is immediately RESOLVED with resolved_at
+    detail_res = client.get(f"/api/v1/gov/complaints/{cid}")
+    assert detail_res.status_code == 200
+    complaint_data = detail_res.json()
+    assert complaint_data["status"] == "RESOLVED"
+    assert complaint_data["resolved_at"] is not None
+
+    # 4. Verify Active Priority Queue drops the resolved complaint
+    refreshed_active = client.get("/api/v1/gov/priority-ranking?limit=30&status=ACTIVE")
+    assert refreshed_active.status_code == 200
+    assert not any(c["id"] == cid for c in refreshed_active.json()["ranked_complaints"])
+
+    # 5. Verify Resolved Priority Queue contains the resolved complaint with proof
+    res_resolved = client.get("/api/v1/gov/priority-ranking?limit=30&status=RESOLVED")
+    assert res_resolved.status_code == 200
+    resolved_list = res_resolved.json()["ranked_complaints"]
+    target_resolved = next((c for c in resolved_list if c["id"] == cid), None)
+    assert target_resolved is not None
+    assert target_resolved["status"] == "RESOLVED"
+    assert target_resolved["resolved_at"] is not None
+    assert len(target_resolved["resolution_evidences"]) >= 1
+    assert target_resolved["resolution_evidences"][0]["after_photo"] == "https://images.unsplash.com/photo-after-repaired"
+
+    # 6. Verify Overview statistics reflect the resolution
+    stats_res = client.get("/api/v1/gov/stats/overview")
+    assert stats_res.status_code == 200
+    stats = stats_res.json()
+    assert stats["resolved_count"] >= 1
+    assert stats["resolution_rate"] > 0
+
+    # 7. Verify citizen notification was created
+    notifs = client.get(f"/api/v1/notifications/complaint/{cid}")
+    assert notifs.status_code == 200
+    assert any(n["event_type"] == "RESOLVED" for n in notifs.json())
+
