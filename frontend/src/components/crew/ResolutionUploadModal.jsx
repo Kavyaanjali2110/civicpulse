@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X,
   Camera,
@@ -36,6 +36,16 @@ const DEMO_PRESETS = [
   },
 ];
 
+// Helper to read a local file as Data URL for backend compatibility
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function ResolutionUploadModal({
   complaint,
   assignment,
@@ -45,10 +55,29 @@ export default function ResolutionUploadModal({
 }) {
   const [beforePhoto, setBeforePhoto] = useState('');
   const [afterPhoto, setAfterPhoto] = useState('');
+  const [afterPhotoFile, setAfterPhotoFile] = useState(null);
+  const [afterPhotoPreview, setAfterPhotoPreview] = useState(null);
+  const [urlImageError, setUrlImageError] = useState(false);
   const [description, setDescription] = useState('');
   const [officerName, setOfficerName] = useState('Vikram Salve (Leader)');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const fileInputRef = useRef(null);
+
+  // Manage object URL lifecycle: create preview on selection, revoke on change or unmount
+  useEffect(() => {
+    if (!afterPhotoFile) {
+      setAfterPhotoPreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(afterPhotoFile);
+    setAfterPhotoPreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [afterPhotoFile]);
 
   // Close on Escape
   const handleKeyDown = useCallback(
@@ -70,9 +99,17 @@ export default function ResolutionUploadModal({
   useEffect(() => {
     if (isOpen) {
       setError(null);
+      setUrlImageError(false);
       // Pre-fill initial photo from complaint if available
       if (complaint?.image_url) {
         setBeforePhoto(complaint.image_url);
+      }
+    } else {
+      setAfterPhoto('');
+      setAfterPhotoFile(null);
+      setUrlImageError(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     }
   }, [isOpen, complaint]);
@@ -82,14 +119,49 @@ export default function ResolutionUploadModal({
   const handleApplyPreset = (preset) => {
     setBeforePhoto(preset.before);
     setAfterPhoto(preset.after);
+    setAfterPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setUrlImageError(false);
     setDescription(preset.notes);
     setError(null);
+  };
+
+  const handleAfterPhotoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("[ResolutionUpload] selected file:", file.name, file.type, file.size);
+
+      // Validate normal image formats
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      const isImage =
+        (file.type && validTypes.includes(file.type)) ||
+        (file.type && file.type.startsWith('image/')) ||
+        /\.(jpe?g|png|webp|gif)$/i.test(file.name);
+
+      if (!isImage) {
+        setError('Please select a valid image file (JPG, PNG, WebP, GIF).');
+        return;
+      }
+
+      setAfterPhotoFile(file);
+      setError(null);
+      setUrlImageError(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setAfterPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmitResolution = async (e) => {
     e.preventDefault();
 
-    if (!afterPhoto.trim()) {
+    if (!afterPhotoFile && !afterPhoto.trim()) {
       setError('Resolution After-Photo is required as proof of physical completion.');
       return;
     }
@@ -102,10 +174,29 @@ export default function ResolutionUploadModal({
     setError(null);
 
     try {
+      let finalAfterPhoto = afterPhoto.trim();
+
+      if (afterPhotoFile) {
+        try {
+          finalAfterPhoto = await readFileAsDataURL(afterPhotoFile);
+        } catch (readErr) {
+          console.error('Failed to read image file', readErr);
+          setError('Failed to process the selected image file. Please try another image.');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      if (!finalAfterPhoto) {
+        setError('Resolution After-Photo is required as proof of physical completion.');
+        setSubmitting(false);
+        return;
+      }
+
       // 1. Upload resolution evidence
       await crewService.uploadResolutionEvidence(complaint.id, {
         before_photo: beforePhoto.trim() || undefined,
-        after_photo: afterPhoto.trim(),
+        after_photo: finalAfterPhoto,
         description: description.trim(),
         uploaded_by: officerName.trim() || 'Field Crew Officer',
       });
@@ -233,19 +324,88 @@ export default function ResolutionUploadModal({
               <input
                 type="url"
                 value={afterPhoto}
-                onChange={(e) => setAfterPhoto(e.target.value)}
+                onChange={(e) => {
+                  setAfterPhoto(e.target.value);
+                  setUrlImageError(false);
+                }}
                 placeholder="https://...after_repaired.jpg"
                 className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 font-sans"
-                required
+                required={!afterPhotoFile}
               />
-              {afterPhoto && (
-                <div className="aspect-video rounded-xl bg-emerald-50 border border-emerald-200 overflow-hidden mt-1">
-                  <img
-                    src={afterPhoto}
-                    alt="After preview"
-                    className="w-full h-full object-cover"
-                    onError={() => {}}
-                  />
+
+              {/* OR Divider */}
+              <div className="flex items-center space-x-2 py-0.5">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] font-bold uppercase text-slate-400">OR</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              {/* Choose Image File Upload */}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAfterPhotoFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-900 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+                >
+                  <Upload className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>Choose Image</span>
+                </button>
+              </div>
+
+              {/* Selected Filename Indicator & Remove Control */}
+              {afterPhotoFile && (
+                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] animate-in fade-in duration-150">
+                  <span className="truncate max-w-[200px] sm:max-w-[240px]">
+                    Selected: <span className="font-semibold">{afterPhotoFile.name}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="ml-2 px-2 py-0.5 rounded text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              {/* After Photo Preview */}
+              {(afterPhotoPreview || afterPhoto) && (
+                <div className="aspect-video rounded-xl bg-emerald-50 border border-emerald-200 overflow-hidden mt-1 relative">
+                  {urlImageError && !afterPhotoPreview ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-50 text-slate-500">
+                      <AlertCircle className="w-5 h-5 text-amber-500 mb-1" />
+                      <span className="text-xs font-semibold text-slate-700">Unable to load image</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Please check URL or choose a local image</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={afterPhotoPreview || afterPhoto}
+                      alt="After preview"
+                      className="w-full h-full object-cover"
+                      onError={() => {
+                        if (!afterPhotoPreview) {
+                          setUrlImageError(true);
+                        }
+                      }}
+                      onLoad={() => {
+                        if (!afterPhotoPreview) {
+                          setUrlImageError(false);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -291,7 +451,7 @@ export default function ResolutionUploadModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || !afterPhoto.trim() || !description.trim()}
+              disabled={submitting || (!afterPhoto.trim() && !afterPhotoFile) || !description.trim()}
               className="flex items-center space-x-1.5 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
