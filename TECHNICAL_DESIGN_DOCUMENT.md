@@ -1,4 +1,4 @@
-﻿# CivicPulse AI â€” Technical Design Document
+﻿# CivicPulse AI Technical Design Document
 
 **Platform Title:** CivicPulse AI
 **Subtitle:** AI-Powered Omnichannel Civic Grievance Intake, Predictive Municipal Infrastructure Intelligence & Automated Field Operations Platform
